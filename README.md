@@ -11,10 +11,8 @@ Part of [PD2 Calculators](https://roofooevazan.github.io/).
 | Path | What it is |
 |---|---|
 | `index.html` | The site: Skill flow, Quirks, Pipeline map, Hit lab, Full reference and Developer reference. |
-| `research/dmg_A_attack.md` | Part A: how a player's physical and weapon-based attack damage is built. |
-| `research/dmg_B_pipeline.md` | Part B: the defender pipeline, including resist, critical and deadly strike, crushing blow, open wounds, absorb, damage reduction and leech. |
-| `research/dmg_C_spells.md` | Part C: missiles, spells, damage over time, summons and auras. |
-| `research/dmg_D_incoming.md` | Part D: monster-to-player damage and PvP. |
+| `research/dmg_A_attack.md` … `dmg_D_incoming.md` | The four damage write-ups behind the atlas: your attack damage, the defender pipeline, spells/over time/summons, and damage to you and PvP. |
+| `research/` (other files) | The wider research log behind all the PD2 Calculators tools: the hit roll, crit and crushing blow, open wounds and pierce, auras, skill damage and speed, Whirlwind, drops, experience, items, maps, mercenaries, monster AI, vendors, shrines and movement, the cube, reviews of the in-game Advanced Stats window, and bug reports (Dragon Tail, Solar Creeper, boss instant death, Rathma/Mendeln sharing). `exploit_checks.md` confirms two mechanics bugs with suggested fixes for the PD2 developers. |
 | `FINDINGS.md` | The research log shared by all the PD2 Calculators tools. |
 
 The rules were recovered from the Diablo II 1.13c DLLs that PD2 uses (`D2Common.dll`, `D2Game.dll`, `D2Client.dll`), with PD2's changes from `ProjectDiablo.dll` applied. The page is one file with no server, build step or tracking. It loads the [marked](https://github.com/markedjs/marked) Markdown renderer from cdnjs, pinned with an integrity hash.

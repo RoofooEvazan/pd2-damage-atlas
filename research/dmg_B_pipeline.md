@@ -271,6 +271,9 @@ resisted (§2.7).
 | 139 heal after demon kill | 18 | target is a demon |
 | 114 damage to mana | 13 | `mana += muldiv(stat114, total, 100)` capped (`defense.md` §1.4) |
 
+> **Correction (audit):** event 7 is raised on every attempt, but "on attack" (195) only **fires on melee swings that hit**: func 20 refuses a struct without input flag 0x20, and the miss/block struct has +0 = 0. VERIFIED in `procs_cooldowns.md` §2.2 (`harness/procs.c` mode 11). Ranged attacks never fire it (event 8 is never raised).
+
+
 Proc order: nodes on unit+0x90 in registration order (stat callback 0x6FCF9470; PD wraps the duplicate check
 0x6FCF94F9 → 0x102C1120, special case stat 359). Each node rolls independently.
 

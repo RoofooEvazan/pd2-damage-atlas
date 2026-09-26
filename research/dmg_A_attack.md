@@ -224,7 +224,8 @@ Elemental from the non-swinging weapon is excluded for that hit (§3).
   - no hit roll (always hits); SrcDam and HitFlags/ResultFlags/HitClass of the **current skill**;
   - damage % = PD `0x102720C0(current skill)` (§4 list) — skills not in the list lose their damage %;
   - the fill (weapon + item elemental), then resist (B) on the local record, **then** the current skill's own
-    elemental (`0x6FCBF210`) and physical (`0x6FCBF1A0`) are added — after resistance;
+    elemental (`0x6FCBF210`) and physical (`0x6FCBF1A0`) are added — after resistance and after the total, so only
+    their poison/chill lengths take effect (VERIFIED, `exploit_checks.md` §2);
   - life leech % (rec+0x38) ÷ ctx divisor 2 (min 1); the ctx %-scale (+0x38) is 0 for splash (no reduction);
   - Dragon Talon/Tail/Flight (ids 255/270/275) instead copy the attacker's last queued kick record (already
     resisted against the main target) and resist it again.
@@ -276,15 +277,18 @@ Stock code on this path that PD2 does **not** change: 0x6FCFC530 except the mast
 
 ## 12. Quirks (verdicts; ids as in flow_A.json)
 
-1. **A.q.power_strike_1000** (READ, DATA; unclear) — Power Strike calc1 = 1000 is read by st10 as the melee
-   hit's damage % (+1000% on the weapon roll) and by do14 as the chain search radius. The tooltip shows no %.
-2. **A.q.calc1_as_ed** (READ; unclear) — Charged Strike (+3..12% = its bolt count) and Lightning Strike (+16% =
+1. **A.q.power_strike_1000** (VERIFIED, `harness/pstrike.c`; likely bug) — Power Strike calc1 = 1000 is read by
+   st10 as the melee hit's damage % (+1000% on the weapon roll, ×11 with no other %) and by do14 as the nova-target
+   search radius. The tooltip shows no %. Details: `exploit_checks.md` §1.
+2. **A.q.calc1_as_ed** (VERIFIED; intended but surprising) — Charged Strike (+3..12% = its bolt count) and Lightning Strike (+16% =
    Param1, its chain radius) get their calc1 as a melee damage %. Stock-inherited.
 3. **A.q.bash_post_resist** (READ; intended but surprising) — Bash's calc2 (`ln34` = +lvl points) is added to the
    queued record after resistances: not reduced by physical resist/DR, not multiplied by ED/crit.
-4. **A.q.area_skill_dmg_after_resist** (READ; likely bug) — in PD's area callback (splash, Leap Attack, Blade
-   Creeper) the skill's own elemental/physical is added after the resist step, so on those targets it ignores
-   resistance and immunity.
+4. **A.q.area_skill_dmg_after_resist** (VERIFIED, `harness/splash.c`; likely bug; corrected) — in PD's area
+   callback (splash, Leap Attack, Blade Creeper) the skill's own elemental/physical is added after the resist step
+   **and after the total +0x4C is summed**. The execute clone takes only the total off life, so that damage is
+   **not dealt at all**; only its poison rate/length and chill length get through, ignoring resistance and immunity
+   (Rabies/Poison Dagger poison, Blades of Ice chill). Details: `exploit_checks.md` §2.
 5. **A.q.splash_ed_table** (VERIFIED table; intended but surprising) — splash keeps the current skill's damage %
    only for the 21 listed skills; e.g. Vengeance, Power/Charged/Lightning Strike, Stun, Rabies and charge-up
    finishers splash with 0%.
