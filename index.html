@@ -303,6 +303,13 @@ input[type=search],input[type=text]{font:15px var(--body);color:#efe6cf;backgrou
 .flow{display:flex;flex-direction:column;gap:0}
 .lane{font:700 11px var(--display);letter-spacing:.14em;text-transform:uppercase;margin:12px 0 6px;display:flex;align-items:center;gap:8px}
 .lane::after{content:"";flex:1;height:1px;background:currentColor;opacity:.35}
+details.lane-g > summary{list-style:none;cursor:pointer;user-select:none}
+details.lane-g > summary::-webkit-details-marker{display:none}
+details.lane-g > summary::before{content:"";width:0;height:0;border-left:6px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s;flex:none;order:-1}
+details.lane-g[open] > summary::before{transform:rotate(90deg)}
+details.lane-g > summary:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+.lane .ln{font:11px var(--mono);letter-spacing:0;text-transform:none;color:var(--muted)}
+.lane-body{padding-bottom:4px}
 .node{position:relative;border:1px solid #2e261a;border-left:4px solid var(--c,#c7a55a);background:rgba(0,0,0,.55);padding:9px 12px;cursor:pointer;margin-left:14px}
 .node + .node{margin-top:14px}
 .node + .node::before{content:"";position:absolute;left:18px;top:-15px;width:2px;height:14px;background:linear-gradient(var(--c,#c7a55a),transparent)}
@@ -1102,14 +1109,14 @@ function nodeHTML(id, cls, qn){
       ${s.pd2 ? `<p><b>PD2 change:</b> ${esc(s.pd2)}</p>` : ''}<p class="hint">Code: ${esc(s.address || '—')} · stage ${esc(id)}</p></div></div>`;
 }
 function chainHTML(path, mark){
-  let out = '', last = null;
+  // Consecutive steps in the same stage form one collapsible lane, closed by default.
+  const lanes = [];
   for (const id of path){
     const s = STAGE[id]; const g = s ? s.group : '?';
-    if (g !== last){ out += `<div class="lane" style="color:${GC[g] || '#888'}">${esc(g)}</div>`; last = g; }
-    const qn = Object.values(QUIRK).filter(q => (q.evidence || '').includes(id)).length;
-    out += nodeHTML(id, mark ? mark(id) : '', 0);
+    if (!lanes.length || lanes[lanes.length - 1].g !== g) lanes.push({g, html: '', n: 0});
+    const l = lanes[lanes.length - 1]; l.html += nodeHTML(id, mark ? mark(id) : '', 0); l.n++;
   }
-  return `<div class="flow">${out}</div>`;
+  return `<div class="flow">${lanes.map(l => `<details class="lane-g"><summary class="lane" style="color:${GC[l.g] || '#888'}">${esc(l.g)} <span class="ln">${l.n} step${l.n > 1 ? 's' : ''}</span></summary><div class="lane-body">${l.html}</div></details>`).join('')}</div>`;
 }
 function entryHTML(sk, e, mark){
   const params = e.params ? Object.entries(e.params).filter(([, v]) => v !== '' && v != null) : [];
