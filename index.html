@@ -335,13 +335,29 @@ details.lane-g > summary:focus-visible{outline:2px solid var(--gold-hi);outline-
 .counts .res{min-width:130px}
 .counts .res .big{font-size:34px}
 /* pipeline graph */
-.gwrap{overflow:auto;max-height:78vh;border:1px solid #2e261a;background:rgba(0,0,0,.55)}
-.gwrap svg text{font-family:var(--body)}
-.gnode{cursor:pointer}
-.gnode rect{fill:#0d0a07;stroke-width:1.4}
-.gnode.sel rect{fill:#2a2012}
-.gedge{fill:none;stroke:#5a4a33;stroke-width:1.2;opacity:.7}
-.gedge.hi{stroke:#e6c877;opacity:1;stroke-width:2}
+/* pipeline map: numbered rows read top to bottom; a straight run of steps shares one row */
+.mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+#m-side{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+.mflow{display:flex;flex-direction:column}
+.mrow{position:relative;display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;padding-bottom:12px}
+.mrow::before{content:"";position:absolute;left:15px;top:30px;bottom:0;width:1px;background:var(--edge)}
+.mrow:last-child::before,.mrow.loose::before{display:none}
+.mn{width:30px;height:30px;display:grid;place-items:center;font:700 12px var(--display);color:var(--gold);border:1px solid var(--edge);background:var(--pit)}
+.mrow.loose{margin-top:6px;padding-top:12px;border-top:1px dashed var(--edge)}
+.mcap{flex-basis:100%;margin:0 0 2px;font-size:13px;color:var(--muted)}
+.mcells{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.marr{color:var(--muted);font-size:15px;line-height:1}
+.mch{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:4px 10px 4px 8px;text-align:left;font:14px/1.25 var(--body);color:var(--ink);background:var(--pit);border:1px solid var(--edge);border-left:3px solid var(--gc);border-radius:0;cursor:pointer;transition:opacity .12s}
+.mch:hover{border-color:var(--gold);border-left-color:var(--gc)}
+.mch:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.mch .loop{color:var(--gold);font-size:13px}
+.mch .tag{display:none;font:400 10px var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.mflow.focus .mch{opacity:.35}
+.mflow.focus .mch.sel,.mflow.focus .mch.pre,.mflow.focus .mch.post{opacity:1}
+.mch.sel{outline:2px solid var(--gold);outline-offset:1px;background:color-mix(in srgb,var(--gold) 16%,var(--pit))}
+.mch.pre .tag.in,.mch.post .tag.out{display:inline}
+.mhint{margin:8px 0 0;font-size:14px;color:var(--muted)}
+@media (max-width:880px){.mapgrid{grid-template-columns:minmax(0,1fr)}#m-side{position:static;max-height:none}}
 .legend{display:flex;flex-wrap:wrap;gap:10px 16px;font-size:13px;color:var(--muted)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:0;margin-right:5px;vertical-align:-1px}
 /* lab */
@@ -430,9 +446,12 @@ table.dev td:first-child{font:12px var(--mono);color:var(--muted);white-space:no
         <label>Show<select id="m-part"><option value="A">Your attack damage</option><option value="B" selected>The hit pipeline</option><option value="C">Spells, over time, summons</option><option value="D">Damage to you, PvP</option><option value="ALL">Everything</option></select></label>
       </div>
       <div class="legend" id="m-legend"></div>
-      <div class="gwrap" id="m-wrap"></div>
+      <p class="mhint">Read top to bottom. Arrows run within a row; steps side by side in a row happen at the same point. Click a step to light up what feeds into it and what comes next.</p>
     </div>
-    <div class="panel" id="m-side"><p class="hint">Click a step in the map to see what it does and which skills pass through it.</p></div>
+    <div class="mapgrid" id="m-grid">
+      <div class="panel" id="m-wrap"></div>
+      <div class="panel" id="m-side"><p class="hint">Click a step to see what it does and which skills pass through it.</p></div>
+    </div>
   </div>
 
   <!-- HIT LAB -->
@@ -1188,12 +1207,15 @@ for (const id of ['q-v', 'q-p', 'q-s']) $(id).addEventListener('change', renderQ
 $('q-q').addEventListener('input', renderQuirks);
 $('q-list').addEventListener('click', e => { const sk = e.target.closest('.skl'); if (sk) openSkill(sk.dataset.sk); });
 
-// ---------- pipeline map (layered DAG drawn in SVG)
+// ---------- pipeline map (numbered rows, top to bottom; straight runs share a row)
+let mapEdges = [];
 function drawMap(){
   const part = $('m-part').value;
+  $('m-grid').appendChild($('m-side'));   // on phones the detail panel may sit inside the map; bring it home first
   const ids = Object.keys(STAGE).filter(id => part === 'ALL' || STAGE[id].part === part);
   const set = new Set(ids);
   const edges = []; for (const p of 'ABCD') for (const e of F[p].edges) if (set.has(e[0]) && set.has(e[1]) && e[0] !== e[1]) edges.push(e);
+  mapEdges = edges;
   // break cycles with a DFS, then longest-path ranks
   const out = {}; ids.forEach(i => out[i] = []); edges.forEach(e => out[e[0]].push(e[1]));
   const state = {}, back = new Set();
@@ -1202,41 +1224,67 @@ function drawMap(){
   const fe = edges.filter(e => !back.has(e[0] + '>' + e[1]));
   const rank = {}; ids.forEach(i => rank[i] = 0);
   for (let it = 0; it < ids.length; it++){ let ch = false; for (const [a, b] of fe) if (rank[b] < rank[a] + 1){ rank[b] = rank[a] + 1; ch = true; } if (!ch) break; }
-  const cols = {}; ids.forEach(i => (cols[rank[i]] ||= []).push(i));
+  const fOut = {}, fIn = {}; ids.forEach(i => { fOut[i] = []; fIn[i] = []; }); fe.forEach(([a, b]) => { fOut[a].push(b); fIn[b].push(a); });
+  const loose = ids.filter(i => !edges.some(e => e[0] === i || e[1] === i));
+  const looseSet = new Set(loose);
+  const cols = {}; ids.filter(i => !looseSet.has(i)).forEach(i => (cols[rank[i]] ||= []).push(i));
   const go = Object.fromEntries(GROUPS.map(([g], i) => [g, i]));
-  for (const c of Object.values(cols)) c.sort((a, b) => (go[STAGE[a].group] - go[STAGE[b].group]) || a.localeCompare(b));
-  const W = 190, H = 46, GX = 70, GY = 16, pos = {};
-  let maxR = 0; for (const [r, c] of Object.entries(cols)){ c.forEach((id, i) => pos[id] = {x: 20 + (+r) * (W + GX), y: 20 + i * (H + GY)}); maxR = Math.max(maxR, c.length); }
-  const width = 40 + (Math.max(...Object.keys(cols).map(Number)) + 1) * (W + GX), height = 40 + maxR * (H + GY);
-  const wrap2 = t => { const w = t.split(' '), l = ['']; for (const x of w){ if ((l[l.length - 1] + ' ' + x).trim().length > 24 && l[l.length - 1]) l.push(x); else l[l.length - 1] = (l[l.length - 1] + ' ' + x).trim(); } return l.slice(0, 2); };
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Damage calculation map">`;
-  for (const [a, b] of edges){ const p = pos[a], q = pos[b]; if (!p || !q) continue;
-    const x1 = p.x + W, y1 = p.y + H / 2, x2 = q.x, y2 = q.y + H / 2, bk = back.has(a + '>' + b);
-    const d = bk ? `M${p.x + W / 2},${p.y + H} C${p.x + W / 2},${p.y + H + 40} ${q.x + W / 2},${q.y + H + 40} ${q.x + W / 2},${q.y + H}` : `M${x1},${y1} C${x1 + GX / 2},${y1} ${x2 - GX / 2},${y2} ${x2},${y2}`;
-    svg += `<path class="gedge" data-a="${esc(a)}" data-b="${esc(b)}" d="${d}" ${bk ? 'stroke-dasharray="4 3"' : ''}/>`; }
-  for (const id of ids){ const s = STAGE[id], p = pos[id], c = getComputedStyle(document.documentElement).getPropertyValue((GROUPS.find(g => g[0] === s.group) || [0, '--g-attack'])[1]).trim() || '#c7a55a';
-    const l = wrap2(s.label);
-    svg += `<g class="gnode" data-id="${esc(id)}" tabindex="0"><rect x="${p.x}" y="${p.y}" width="${W}" height="${H}" rx="3" stroke="${c}"/><rect x="${p.x}" y="${p.y}" width="4" height="${H}" fill="${c}" stroke="none"/>`
-      + l.map((t, i) => `<text x="${p.x + 12}" y="${p.y + (l.length === 1 ? 28 : 19 + i * 16)}" font-size="13" fill="#e6d39a">${esc(t)}</text>`).join('') + `</g>`; }
-  svg += '</svg>';
-  $('m-wrap').innerHTML = svg;
-  $('m-legend').innerHTML = GROUPS.map(([g]) => `<span><i style="background:${GC[g]}"></i>${esc(g)}</span>`).join('') + '<span>dashed = loops back</span>';
+  const byGroup = (a, b) => (go[STAGE[a].group] - go[STAGE[b].group]) || STAGE[a].label.localeCompare(STAGE[b].label);
+  // rows: a rank with several steps is one row of steps side by side; a run of single
+  // steps, each leading into the next, folds into one row with arrows (up to 5, so rows stay
+  // easy to scan). Steps that can be skipped show up when one is clicked.
+  const rows = [];
+  for (const r of Object.keys(cols).map(Number).sort((a, b) => a - b)){
+    const c = cols[r].sort(byGroup), last = rows[rows.length - 1];
+    if (c.length === 1 && last && last.chain){
+      const prev = last.ids[last.ids.length - 1];
+      if (last.ids.length < 5 && fOut[prev].includes(c[0])){ last.ids.push(c[0]); continue; }
+    }
+    rows.push({ids: c, chain: c.length === 1});
+  }
+  const loopTo = {}; back.forEach(k => { const [a, b] = k.split('>'); (loopTo[a] ||= []).push(b); });
+  const chip = id => { const s = STAGE[id], lp = loopTo[id];
+    return `<button type="button" class="mch" data-id="${esc(id)}" style="--gc:${GC[s.group] || 'var(--gold)'}">${esc(s.label)}`
+      + (lp ? `<span class="loop" title="Loops back to ${esc(lp.map(x => STAGE[x].label).join(', '))}">↺</span>` : '')
+      + `<span class="tag in">feeds in</span><span class="tag out">next</span></button>`; };
+  let html = '<div class="mflow" id="m-flow">';
+  rows.forEach((row, i) => {
+    const cells = row.chain ? row.ids.map(chip).join('<span class="marr" aria-hidden="true">→</span>') : row.ids.map(chip).join('');
+    html += `<div class="mrow"><span class="mn" aria-label="Step ${i + 1}">${i + 1}</span><div class="mcells">${row.chain ? '' : `<p class="mcap">${row.ids.length} steps at this point</p>`}${cells}</div></div>`;
+  });
+  if (loose.length) html += `<div class="mrow loose"><span class="mn" aria-hidden="true">+</span><div class="mcells"><p class="mcap">Also part of this, with no fixed place in the order</p>${loose.sort(byGroup).map(chip).join('')}</div></div>`;
+  html += '</div>';
+  $('m-wrap').innerHTML = html;
+  $('m-legend').innerHTML = GROUPS.filter(([g]) => ids.some(i => STAGE[i].group === g)).map(([g]) => `<span><i style="background:${GC[g]}"></i>${esc(g)}</span>`).join('') + (back.size ? '<span>↺ loops back to an earlier step</span>' : '');
+  $('m-side').innerHTML = '<p class="hint">Click a step to see what it does and which skills pass through it.</p>';
 }
 function mapSelect(id){
-  document.querySelectorAll('.gnode').forEach(g => g.classList.toggle('sel', g.dataset.id === id));
-  document.querySelectorAll('.gedge').forEach(e => e.classList.toggle('hi', e.dataset.a === id || e.dataset.b === id));
+  const flow = $('m-flow'), chips = flow.querySelectorAll('.mch');
+  const already = flow.querySelector('.mch.sel');
+  if (already && already.dataset.id === id){   // click the chosen step again to clear
+    flow.classList.remove('focus'); chips.forEach(c => c.classList.remove('sel', 'pre', 'post'));
+    $('m-grid').appendChild($('m-side'));
+    $('m-side').innerHTML = '<p class="hint">Click a step to see what it does and which skills pass through it.</p>';
+    return;
+  }
+  const pre = new Set(mapEdges.filter(e => e[1] === id).map(e => e[0])), post = new Set(mapEdges.filter(e => e[0] === id).map(e => e[1]));
+  flow.classList.add('focus');
+  chips.forEach(c => { const d = c.dataset.id; c.classList.toggle('sel', d === id); c.classList.toggle('pre', pre.has(d)); c.classList.toggle('post', post.has(d)); });
   const s = STAGE[id]; const users = SKLIST.filter(sk => sk.entries.some(e => (e.path || []).includes(id)));
   const ins = []; const outs = []; for (const p of 'ABCD') for (const e of F[p].edges){ if (e[1] === id) ins.push(e[0]); if (e[0] === id) outs.push(e[1]); }
-  $('m-side').innerHTML = `<h2>${esc(s.label)}</h2><div class="chips"><span class="chip" style="color:${GC[s.group]}">${esc(s.group)}</span><span class="chip">${esc(PARTS[s.part])}</span>${badge(s.status)}</div>
+  const side = $('m-side');
+  side.innerHTML = `<h2>${esc(s.label)}</h2><div class="chips"><span class="chip" style="color:${GC[s.group]}">${esc(s.group)}</span><span class="chip">${esc(PARTS[s.part])}</span>${badge(s.status)}</div>
     ${s.explain ? `<p>${esc(s.explain)}</p>` : ''}${s.formula ? `<div class="eqbox">${esc(s.formula)}</div>` : ''}${s.pd2 ? `<p><b>PD2 change:</b> ${esc(s.pd2)}</p>` : ''}
     ${(s.inputs || []).length ? `<div class="chips">${s.inputs.map(x => `<span class="chip long">${esc(x)}</span>`).join('')}</div>` : ''}
     <p class="hint">Comes from: ${ins.map(i => STAGE[i] ? esc(STAGE[i].label) : esc(i)).join(', ') || '—'} · leads to: ${outs.map(i => STAGE[i] ? esc(STAGE[i].label) : esc(i)).join(', ') || '—'}</p>
     <p class="hint">Code: ${esc(s.address || '—')}</p>
     <h4>Skills that pass through this step (${users.length})</h4><div class="chips">${users.slice(0, 200).map(u => `<button type="button" class="skl" data-sk="${esc(u.name)}">${esc(u.display)}</button>`).join(' ') || '<span class="hint">none listed</span>'}</div>`;
+  // on phones, show the details right under the row that was clicked
+  if (matchMedia('(max-width:880px)').matches){ flow.querySelector(`.mch[data-id="${CSS.escape(id)}"]`).closest('.mrow').after(side); }
+  else $('m-grid').appendChild(side);
 }
 $('m-part').addEventListener('change', drawMap);
-$('m-wrap').addEventListener('click', e => { const g = e.target.closest('.gnode'); if (g) mapSelect(g.dataset.id); });
-$('m-wrap').addEventListener('keydown', e => { const g = e.target.closest('.gnode'); if (g && e.key === 'Enter') mapSelect(g.dataset.id); });
+$('m-wrap').addEventListener('click', e => { const g = e.target.closest('.mch'); if (g) mapSelect(g.dataset.id); });
 $('m-side').addEventListener('click', e => { const sk = e.target.closest('.skl'); if (sk) openSkill(sk.dataset.sk); });
 
 // ---------- hit lab
