@@ -503,26 +503,7 @@ PD2Items.rollBase('uap', null, { ed: true, ethereal: true })     // base defense
   harness compares.
 - The rare odds are Monte-Carlo. 200k items give about ±0.06 % absolute on a 2 % event.
 
-## 12. Bugs and quirks
-
-| # | finding | status | verdict |
-|---|---|---|---|
-| 1 | The draw is `rand(W+1)`; r = W falls through to the **last** candidate, which gets weight w+1. The pick never fails. maps.md's "1/(W+1) no-pick" reading is wrong, and its "fewer than 6 affixes" can only come from empty pools. | VERIFIED | intended but surprising (stock off-by-one, harmless) |
-| 2 | `dmg%` on a weapon whose trunc(ED·maxdam/100) is 0 gives **+1 max damage and no ED%**. Example: 10 % ED on a base with max damage ≤ 9. This also hits superior dmg% 5–15 on small weapons. | VERIFIED | intended but surprising (stock) |
-| 3 | Any `ac%` mod (magic, rare, superior, unique, set) resets base defense to **maxac+1**. The unit-seed defense roll only matters for items without ac%. | VERIFIED (native write seen) | intended but surprising (stock) |
-| 4 | Circlets, wands, staves and orbs weight affixes by frequency × level, so their high rows are much more likely. For example, P(+2 class) on a rare Diadem is 29.8 % against 14.7 % on an amulet. | VERIFIED | intended but surprising (stock) |
-| 5 | Class-specific rows are allowed on any classless item in their itype list (e.g. +Paladin skills on swords) and are blocked only on other classes' class items. | VERIFIED | intended (PD2 data design) |
-| 6 | The `Expansion` separator rows are dropped by the compiler. Every index after them (ItemTypes ≥ 58, Properties ≥ 121, affix and item rows) is one lower than the txt row. | DATA (bins) | not a game bug; a trap for tools |
-| 7 | MagicSuffix "of Anima" lists itype `amu` (a typo for `amul`). The compiled `.bin` drops it, so it never rolls on amulets. | DATA (bin) | likely bug |
-| 8 | Affix mods are applied until the first empty or unresolved property (−1), so a bad code in mod 1 would drop mods 2–3. Unique/set application only skips. No spawnable PD2 affix is affected. `map-mon-extra-mag` is unresolved in unspawnable rows. | READ + DATA | unclear (latent) |
-| 9 | PD2 ethereal gives only +25 % base damage/defense and keeps full durability. The stock ×1.5 / half-durability code is bypassed. | READ | intended (PD2 design) |
-| 10 | PD2 rare jewels always get 4 affix rounds regardless of ilvl. At ilvl < 85 other rares get a random 3–6 / 4–6 / 5–6. | VERIFIED | intended (PD2 design) |
-| 11 | Staffmods: 4 failed tries leave the slot empty, so a "3-skill" roll can give 2 (or 1/0 at low ilvl). Blade Dance is in the Assassin list but always rejected. List 8 is built and never used. | VERIFIED (logic) / READ (lists) | unclear (probably intended filters; the dead list is a leftover) |
-| 12 | Magic charms are forced only at ilvl ≥ 90, so the grand charm skiller chance jumps from 4.5 % (ilvl 89) to 9.05 % (ilvl 90). | VERIFIED | intended but surprising |
-| 13 | The picker always draws its `rand & 1` even when forced, so forced calls still use RNG. | VERIFIED | neutral (matters only for seed replays) |
-| 14 | Small Charm qlvl 28 → alvl = 2·ilvl − 99 above ilvl 85. An ilvl-90 small charm has alvl 81, so level-82+ small-charm rows need ilvl ≥ 91. | VERIFIED formula, DATA | intended but surprising (stock formula) |
-
-## 13. Not verified / open
+## 12. Not verified / open
 
 - Rare name order (which block is prefix) and the names' own RNG. The harness stubs the names; the model draws them
   first, as the code does. READ.

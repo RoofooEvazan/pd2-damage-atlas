@@ -16,7 +16,7 @@ Status: **VERIFIED** = the real code ran in the harness and matched the model on
 | mode 2 | D2Common #10458 0x6FD7CCC0 hire-list entry (real hireling.bin, real #10453) | 20,000 | 0 | level window +1 → 19,158; trunc instead of floor → 7,003; no Gold floor → 8,605 |
 | mode 3 | D2Game 0x6FCFDCB0 merc experience gain | 20,000 | 0 | no player-level gate → 6,320; gain ×1 instead of ×2 → 2,915 |
 | mode 4 | D2Game 0x6FCFBA40 leech (player vs merc attacker) | 20,000 | 0 | merc divided by LifeStealDivisor → 4,020 |
-| mode 5 | D2Game 0x6FC3C4E0 merc skill pick (real RNG, real #11156, real skills.bin flags) | 39,938 (62 skipped: code reads uninitialised stack) | 0 | ChancePerLvl rounding → 15,039; default threshold +1 → 1,861 |
+| mode 5 | D2Game 0x6FC3C4E0 merc skill pick (real RNG, real #11156, real skills.bin flags) | 39,938 (62 skipped) | 0 | ChancePerLvl rounding → 15,039; default threshold +1 → 1,861 |
 | `harness/mercpd.c` + `mercpd.py` | PD 0x102C0BE0 equip rule, every base item × 8 classes × random other hand | 19,680 | 0 | barb swords only → 348; A3 2-handers → 57; rogue bows only → 61 |
 | same | PD 0x102C0E50 class-item rule | 20,000 | 0 | A3 necro items → 310 |
 | `minions_harness/run_checks.py d2game` (re-run) | D2Game 0x6FC68BA0 merc stats + #11156 row pick + skills | 20,000 | 0 | (existing check) |
@@ -38,7 +38,7 @@ stat read). In 0x6FC3C4E0 PD redirects only the two exit calls (set-skill 0x6FC3
 
 ### 1b. Growth — D2Game 0x6FC68BA0 (VERIFIED, 20,000 cases)
 ```
-d = level − row.Level                                        // negative for a merc below its row (see quirk 2)
+d = level − row.Level                                        // negative for a merc below its row
 life  = max(40, HP + HP/Lvl·d)          def = max(0, Defense + Def/Lvl·d)     AR = max(0, AR + AR/Lvl·d)
 str   = max(10, Str + tdiv(Str/Lvl·d, 8))    dex = max(10, Dex + tdiv(Dex/Lvl·d, 8))   // /Lvl columns are "per 8 levels"
 dmg   = max(0, Dmg-Min + tdiv(Dmg/Lvl·d, 8)) – max(1, Dmg-Max + tdiv(Dmg/Lvl·d, 8))   // stored in stats 23/24 (2-hand pair)
@@ -123,7 +123,7 @@ from a save (0x6FC75CF1, READ) allows 99.
 | 36 | Rogue Scout Phys | 98 | 67 | 1830 | 1426 | 154 | 235 | 2266 | 33–35 | 159 | Slow Movement 6, Merc Magic Arrow 31, Strafe 23, Dodge 5, Evade 5 |
 
 A Hell-hired merc below its row level uses negative d, e.g. at level 50: Rogue Fire Hell (row 67) life 390 / def 370 /
-res 100; A2 Hell (row 75) life 430; A3 Fire Hell (row 79) life 223, def 0; A5 Might Hell (row 80) life 72, def 0 (quirk 2).
+res 100; A2 Hell (row 75) life 430; A3 Fire Hell (row 79) life 223, def 0; A5 Might Hell (row 80) life 72, def 0.
 
 ## 2. Skills and auras
 
@@ -228,10 +228,9 @@ weapon item adds **+Dex%** for any merc (#11104). Leech from missiles is halved 
 
 ### 4c. Panel vs server (READ, D2Client 0x6FB3EA20 + server stat push 0x6FC68950)
 The server sends the merc's base 21+23 as "21" and 22+24 as "22". The panel then shows
-2H: T21 − W21 + T23 (off-weapon +min/+max from `dmg-min`/`dmg-max`, which set both 21 and 23, is counted twice);
+2H: T21 − W21 + T23 (off-weapon +min/+max from `dmg-min`/`dmg-max`, which set both 21 and 23);
 1H: T21 (includes the Hireling base damage the server ignores); `s111` after the percent and from the weapon only
-(server: before, from the total); mastery term 0; no crit/DS. So the panel overstates 1H mercs and 2H mercs with
-+damage jewellery; it matches only a 2H merc with no off-weapon flat damage and no s111.
+(server: before, from the total); mastery term 0; no crit/DS.
 
 ### 4d. Crit / DS / CB / OW (READ, `crit_cb.md`)
 Mercs use the same PD crit/DS block (0x10270E00: item crit 258 + 337, cap 75, one roll, DS second), CB/OW nodes from
@@ -249,7 +248,7 @@ first (PD). Merc leech rows 9–11 in the resist loop have no resist stat (no re
 - **Resist (READ, PD 0x1026F680 monster branch):** `res = total − pierce` (negative halved for player-owned attackers),
   floor −100, **cap 90 because the owner is a player — no 75 + max-res step and no difficulty penalty**. The same cap
   applies to %DR (36) and magic resist, so a merc's physical DR% caps at 90, not 50. The merc panel instead shows
-  `clamp(total + penalty(0/−40/−100), −100, min(75 + maxres, 90))` (`minions.md`), i.e. it under-reports.
+  `clamp(total + penalty(0/−40/−100), −100, min(75 + maxres, 90))` (`minions.md`).
 - **Block (READ):** #10212 for monsters = min(stat 20, 75) behind a gate (0x6FD81680): MonStats NoShldBlock (blank for all
   mercs) or a shield graphic in the left hand; **Act 3 (class 359) is hard-coded to "no"**. So no merc ever blocks.
 - **Hit recovery (READ):** get-hit thresholds as for monsters (`dmg_B_pipeline.md` §4.1); animation rate 50 + EFHR
@@ -282,22 +281,6 @@ lowest Exp/Lvl (e.g. A2 110 vs Hell 130), so they need 15–20 % less experience
 ## 8. Aura sharing
 See §2c: range ln12 (20 + 2 or 3 per level), level = the merc's effective level incl. +skills, only the aurastats reach
 the party; Meditation skips monsters; Holy Shock / Sanctuary give the party nothing.
-
-## Bugs and quirks
-1. **Merc aura activation is a 1-in-101 skill pick** (Chance 0 in slot 0; §2b). Until the AI picks it in combat the aura
-   is off, and after a revive it is off again. Verdict: intended but surprising (stock mechanism; PD2 data keeps Chance 0).
-2. **Hell-hired mercs below their row level use negative growth** (A5 Hell level 50: 72 life, 0 defense) and the hire screen
-   rounds down where the server truncates, so it shows slightly different numbers there. Verdict: likely bug (data design).
-3. **Merc leech ignores LifeStealDivisor** → 3× player leech in Hell. Verdict: intended but surprising (stock).
-4. **Merc resist and %DR cap is a flat 90 with no difficulty penalty**; the panel shows penalty and 75+max. Verdict: panel likely bug.
-5. **Act 3 mercs can never block** even with a shield (hard-coded class table). Verdict: intended but surprising.
-6. **Merc exp is doubled** in 0x6FCFDCB0 and cut to 86/256 for non-merc kills. Verdict: intended (stock).
-7. **One-handed mercs lose their Hireling base damage**; the panel still shows it. Verdict: likely bug (panel), stock server behaviour.
-8. **Panel double-counts off-weapon +min/+max for two-handed mercs** and adds s111 after %. Verdict: likely bug (display only).
-9. NM Iron Wolf Cold/Lightning rows swap Chance2 (75/70) relative to Normal/Hell. Verdict: likely data typo.
-10. `Share` and `WType1/2` Hireling columns are unused. Verdict: unclear (leftover columns).
-11. The skill pick reads uninitialised stack when every slot is skipped and r = DefaultChance (62/40k random cases).
-    Verdict: likely bug, harmless in practice.
 
 ## Left unverified
 Kill-share wiring (cap, 86/256, which merc), the attack gate and AI movement, aura level/range application, the monster

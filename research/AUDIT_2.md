@@ -1,4 +1,4 @@
-# Audit 2: independent re-check of 14 write-ups
+# Audit 2: independent re-check of 13 write-ups
 
 Auditor: a separate agent that did not write any of the audited work. Date: 26 Sep 2026.
 
@@ -12,7 +12,6 @@ Auditor: a separate agent that did not write any of the audited work. Date: 26 S
 
 | write-up | verdict |
 |---|---|
-| exploit_checks.md | solid (one example table cannot be re-run) |
 | pierce_ow.md | solid |
 | whirlwind.md | solid |
 | procs_cooldowns.md | solid |
@@ -30,15 +29,6 @@ Auditor: a separate agent that did not write any of the audited work. Date: 26 S
 ---
 
 ## 1. Per write-up
-
-### exploit_checks.md — solid
-| check | result |
-|---|---|
-| `pstrike.c` + `pstrike.py` | 30,000 cases, **0 mismatches**. Mutations: no_skill_pct 22,797; cap100 11,279 (both as claimed). do14 radius 1000 (PS) / 16 (LS) at levels 1/10/20/40 |
-| `splash.c` + `splash.py` | 20,000 cases, **0 mismatches**. Mutations: 13,034 / 14,074 / 17,696 (as claimed). Radius 5 |
-| spot: Power Strike data | MPQ Skills.txt: srvstfunc 10, srvdofunc 14, calc1 1000, EType ltng, SrcDam 128, srvmissilea `powerstrikenova1`. Confirmed |
-| spot: calc1 → rec+0x0C | D2Game 0x6FC6C478 loads skill +0x138 (calc1), calls the evaluator, and stores at [esp+0x28]. With the record at esp+0x1C after two pushes, that is rec+0x0C. The fill reads [ebp+0xC] at 0x6FCFD503. Confirmed |
-| worked example | Arithmetic checks out: 276·3.45 = 952, 406·12.45+406 = 5460, ratio 1345/345 = 3.9. The "2,000 native swings" column is **not** produced by the shipped `pstrike.py`, which prints only a 30 → 330 check. Note added |
 
 ### pierce_ow.md — solid
 | check | result |
@@ -108,7 +98,7 @@ Auditor: a separate agent that did not write any of the audited work. Date: 26 S
 | `mapapply.c` | 20,000/20,000 match. Mutations: 17,848 and 15,066 matches (as claimed, written as match counts) |
 | `mapaffix.c` | rare count 30,000/30,000, force flag 30,000/30,000. Mutation 29,145 / 25,027 |
 | spot: T1 set | PD 0x10126E30 builds 0x104E30B4 from 0x1037FE10/0x1037FE40 = {143, 145, 146, 148, 151, 155, 158, 169}. That equals the MPQ `t1m` maps (t11, t21, t22, t24, t26, t33, t34, t36) and TC "Map Tier 1". Confirmed |
-| **problem 1**: §2.3 "r == total picks nothing" + quirk 14 + §2.2 "5.8–5.9 affixes" | Wrong. D2Game 0x6FC3481E–0x6FC34853: when the walk ends, `edi` still holds the last candidate, and it is taken. `items.md` proves this natively: probe, and 542 mismatches for the "picks nothing" mutation. `items.js` gives 6.00 affixes on 20,000 ilvl-88 rare t11/t13 maps. `maps.js pick()` carries the wrong rule. Corrections added |
+| **problem 1**: §2.3 "r == total picks nothing" + §2.2 "5.8–5.9 affixes" | Wrong. D2Game 0x6FC3481E–0x6FC34853: when the walk ends, `edi` still holds the last candidate, and it is taken. `items.md` proves this natively: probe, and 542 mismatches for the "picks nothing" mutation. `items.js` gives 6.00 affixes on 20,000 ilvl-88 rare t11/t13 maps. `maps.js pick()` carries the wrong rule. Corrections added |
 | **problem 2**: §4 corruption and §1.1 "1..1000" | Taken from the stale zip. The live MPQ row 341 rolls **1..3000**, and the thresholds are 270…2970, then the unique maps up to 3000. Phase 2 is the stock op-16 test, `stat ≤ value` (the D2Game jump table 0x6FC90B34 → 0x6FC9060F fails when stat > value), not "roll < value". The T4 rows stop at 1000 → 3.33 % each with 2/3 duds, not 10 %. Corrections added |
 
 ### items.md — solid
@@ -156,7 +146,7 @@ Auditor: a separate agent that did not write any of the audited work. Date: 26 S
 |---|---|
 | native checks | none of its own. It uses "TESTED" (not VERIFIED) and leans on other harnesses. No harness-less VERIFIED claims |
 | spot: open wounds 1.4 | BH (2691+25)·25 >> 8 + 200 = **465**; game 3716·25/256 = **363**/s. Confirmed |
-| issues | §5 says the XP % line was not checked. `experience.md` §6 has since checked it (note added). §1.4 "up to 3 stacks" is true for one attacker, but with two attackers the stack count resets and the drain is unbounded (`pierce_ow.md` bug 2); no note added |
+| issues | §5 says the XP % line was not checked. `experience.md` §6 has since checked it (note added) |
 
 ---
 
@@ -179,9 +169,7 @@ Auditor: a separate agent that did not write any of the audited work. Date: 26 S
 
 **VERIFIED without a backing harness**
 - `shrines_movement.md` §1.2 / §4: "native Monte Carlo 3×100k within ±0.2 points". There is no such mode in the shipped `shrine.c`/`shrine.py`.
-- `exploit_checks.md` §1.4: the 2,000-swing Matriarchal Spear table. The shipped `pstrike.py` does not produce it.
-- `maps.md` quirk 1 percentages (37 / 71 / 8–9 %) are model runs from `maps.js`, backed by the `mapapply` equivalence. Acceptable, but they depend on `maps.js` rolling, which uses the wrong `pick()` rule; the effect should be small.
-- Everything else labelled VERIFIED in the 14 write-ups was re-run and matched.
+- Everything else labelled VERIFIED in the 13 write-ups was re-run and matched.
 
 ---
 
@@ -191,32 +179,29 @@ Auditor: a separate agent that did not write any of the audited work. Date: 26 S
 2. `maps.md` §2.2: rare maps always get 6 affixes; the 5.8–5.9 figure comes from the wrong `maps.js pick()`.
 3. `maps.md` §2.3: r == total takes the last candidate; the pick does not fail.
 4. `maps.md` §4: corruption table is the stale zip version. Live: 1..3000, op 16 ≤, T1–T3 9 % each + 1 % unique maps, T4 3.33 % each with 2/3 duds; see cube.md §2.5.
-5. `maps.md` §6 quirk 14: not real.
-6. `crit_cb.md` "Do-func" bullet: event timing superseded by whirlwind.md (rate 256, do-func every frame).
-7. `drops.md` §2: `t3b` is valid live; Map Tier 3 has 9 maps; drops-data.json is now rebuilt from live data.
-8. `data_sources.md` §4.1: maps.md §corruption did not use the MPQ.
-9. `data_sources.md` §5: same, plus drops-data.json has since been rebuilt.
-10. `shrines_movement.md` §1.5: Experience shrine example is 455 → 682, not 941 → 1411.
-11. `experience.md` status key: mpq ≠ zip in general; the tables used here are identical.
-12. `mercenaries.md` §7: kill handler is PD 0x102CA4B0.
-13. `bh_panel_review.md` §5: XP % line now covered by experience.md §6.
-14. `dmg_B_pipeline.md` (on-event table): 195 fires only on melee hits.
-15. `pierce_ow.md` §2.2: 11,062 are attempts; 5,545 actual procs.
-16. `exploit_checks.md` §1.4: the 2,000-swing table is not reproducible with the shipped script.
-17. `cube.md` header: zip CubeMain has 2,302 rows.
+5. `crit_cb.md` "Do-func" bullet: event timing superseded by whirlwind.md (rate 256, do-func every frame).
+6. `drops.md` §2: `t3b` is valid live; Map Tier 3 has 9 maps; drops-data.json is now rebuilt from live data.
+7. `data_sources.md` §4.1: maps.md §corruption did not use the MPQ.
+8. `data_sources.md` §5: same, plus drops-data.json has since been rebuilt.
+9. `shrines_movement.md` §1.5: Experience shrine example is 455 → 682, not 941 → 1411.
+10. `experience.md` status key: mpq ≠ zip in general; the tables used here are identical.
+11. `mercenaries.md` §7: kill handler is PD 0x102CA4B0.
+12. `bh_panel_review.md` §5: XP % line now covered by experience.md §6.
+13. `dmg_B_pipeline.md` (on-event table): 195 fires only on melee hits.
+14. `pierce_ow.md` §2.2: 11,062 are attempts; 5,545 actual procs.
+15. `cube.md` header: zip CubeMain has 2,302 rows.
 
-No status labels needed changing. The one label I considered, maps.md quirk 14, is READ and is now marked wrong by a note.
+No status labels needed changing.
 
 ---
 
 ## 4. What should be redone
 
-1. **`maps.js`**: fix `pick()` so that r == total returns the last candidate, as `items.js` does. Then regenerate the rare-map affix mean (expect 6.00) and the quirk-1 splash-loss percentages.
+1. **`maps.js`**: fix `pick()` so that r == total returns the last candidate, as `items.js` does. Then regenerate the rare-map affix mean (expect 6.00).
 2. **`maps.js corruptionOutcome` / `CORRUPT`**: these are documented as taking "a corruptor roll 1..1000" (maps.js line 14), i.e. the zip table. Rebuild them from `cube.js` / MPQ CubeMain (1..3000, op 16 ≤, T4 duds), or have the site use `cube.js corrupt()`.
 3. **`maps.md` §4**: rewrite from `cube.md` §2.5, beyond the correction note.
 4. **`drops.md` header and `drops-data.json` `generated` string**: the data is now live, but both still say data.zip. Re-run `test_drops.js` expectations for Map Tier 3 (9 maps).
 5. **`shrine.py`**: add the Monte Carlo mode that §1.2 cites, or drop the claim.
-6. **`pstrike.py`**: add the Matriarchal Spear example run, or relabel the table.
-7. **`aipick.py`**: fix the random seed so that the mutation counts are reproducible.
-8. **`AGENT_CONTEXT.md`**: correct the "T() picks the right one" line (it reads the zip unless `source='mpq'`).
-9. **`crit_cb.md` / `engine.js`**: "Still not modelled: the Whirlwind rate" in crit_cb §4 may be stale (bh_panel_review says the page now uses the fixed rate). Confirm and update.
+6. **`aipick.py`**: fix the random seed so that the mutation counts are reproducible.
+7. **`AGENT_CONTEXT.md`**: correct the "T() picks the right one" line (it reads the zip unless `source='mpq'`).
+8. **`crit_cb.md` / `engine.js`**: "Still not modelled: the Whirlwind rate" in crit_cb §3 may be stale (bh_panel_review says the page now uses the fixed rate). Confirm and update.

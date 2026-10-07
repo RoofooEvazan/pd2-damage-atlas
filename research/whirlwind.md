@@ -238,15 +238,10 @@ Two Phase Blades (dual wield, rangeadder 2 → R = 5), same path:
   - "Spread round-robin across the targets" is wrong. The hits alternate between the two nearest (§6).
 - Stock 0x6FC46E40 (weapon-speed delay 4–16 frames) no longer runs in PD2 (patched call at 0x6FC48CE5). In PD2, WSM affects Whirlwind neither through the gate nor through the sequence rate.
 
-## 10. Bugs and quirks
+## 10. Further notes
 
-1. **IAS and WSM have no effect on Whirlwind** (VERIFIED). **Verdict: intended but surprising.** PD2 set a fixed 5-frame delay, and the sequence ignores IAS because Whirlwind lacks `UseAttackRate`. Tooltips and calculators that show a Whirlwind IAS breakpoint are wrong.
-2. **Only the two nearest enemies are hit while the geometry holds** (VERIFIED). The "not the last target" rule excludes only one GUID, so a third enemy in range is skipped until movement changes the distance order. **Verdict: unclear.** It is probably meant to spread hits, but in a tight static pack it concentrates them on two targets.
-3. **Gate slots are used even with no target in range** (READ, logic VERIFIED). The gate runs before the target search. Entering range can therefore wait up to 4 frames (5 with dual) for the next slot. **Verdict: intended but surprising (minor).**
-4. **Dual wield on PvP maps is faster** (VERIFIED): 5 frames instead of 6, i.e. 10 hits/s instead of 8.33. **Verdict: intended** (explicit level check 157/159/166).
-5. **No movement for the first 2 frames, and 4 idle frames after the path ends** (VERIFIED timing). This is stock behaviour (events drive the path step, and END comes from the last reschedule). It lowers the hit rate of short, repeated Whirlwinds (table in §7). **Verdict: intended but surprising.**
-6. **A new Whirlwind command mid-cast is accepted and resets the gate** (READ). Command acceptance for SQ (0x6FC98100) allows any command while `cur ≤ END+5`, which always holds during a Whirlwind. The start function sets skill+0x24 = 0 and the first event comes 3 frames later. A client that re-sent Whirlwind every 3–4 frames could get more than one hit per 5 frames. Whether the real client can send that fast was not traced. **Verdict: unclear.**
-7. **With two weapons, a no-target gate flips which hand strikes first** (READ). The 0x2000 hand flag toggles once on the no-target exit. **Verdict: intended but surprising (harmless).**
+1. **Gate slots are used even with no target in range** (READ, logic VERIFIED). The gate runs before the target search. Entering range can therefore wait up to 4 frames (5 with dual) for the next slot.
+2. **With two weapons, a no-target gate flips which hand strikes first** (READ). The 0x2000 hand flag toggles once on the no-target exit.
 
 ## Unverified
 - The client-side Whirlwind (cltstfunc 31 / cltdofunc 45) and when the client re-sends the command.

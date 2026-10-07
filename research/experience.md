@@ -115,7 +115,7 @@ Who gets which:
 - **Minions** of uniques get the same umods 1–4 (`0x6FC44850` loop). So they also get **×5 exp, +3 levels**.
 - **Champions** get umods 1–4 plus their champion type:
   - Champion (16) calls `0x6FC42DA0`. Ghostly (36, `0x6FC43850`), fanatic (37, `0x6FC43810`) and possessed (38, `0x6FC437C0`) also call it. Net **×3 exp, +2 levels**.
-  - **Berserker** (39, `0x6FC42D00`) does **not** call it. Berserker champions keep **×5 exp and +3 levels**, like a unique. See quirk Q3.
+  - **Berserker** (39, `0x6FC42D00`) does **not** call it. Berserker champions keep **×5 exp and +3 levels**, like a unique.
 - Act bosses and Uber bosses get no umods. Their exp is all in MonStats.
 - PD2 patches none of these handlers (no records in 0x6FC41000..0x6FC45000 touch them, DATA).
 
@@ -331,24 +331,8 @@ EXP_THRESHOLD, EXP_RATIO, BH_XP_TABLE, BH_XP_RATIO, GATED_LEVELS
   - the 8,388,607 per-share cap;
   - the player-count bonus, which is in the monster's exp, not the %.
 
-## 7. Bugs and quirks
+## 7. Not verified natively
 
-| # | What | Evidence | Verdict |
-|---|---|---|---|
-| Q1 | **A share of 0 or less gives 1 exp.** `0x6FCFC030` returns 1 when x ≤ 0, so a low party share still awards 1. mf_misc.js `expGain` returns 0 here (it was only tested with x > 0). | VERIFIED (mutation `zero1`: 96 mismatches) | intended but surprising (harmless) |
-| Q2 | **In a party, the kill goes to the killer when only one member is in range.** Also, if **nobody** is within 80 subtiles (e.g. a summon or merc kills far away), no player gets exp. Out of a party there is no range check at all. | VERIFIED | intended but surprising |
-| Q3 | **Berserker champions give ×5 exp and +3 levels, like uniques.** Other champion types give ×3 and +2, because the berserker handler `0x6FC42D00` never calls the champion handler `0x6FC42DA0`. | READ (handlers), arithmetic VERIFIED | likely bug (stock 1.13c, not PD2) |
-| Q4 | **The per-share cap of 8,388,607 bites on Pinnacle bosses.** Uber Diablo, Rathma and Lucion have 14,400,000 base exp at 1 player and 64,800,000 at 8. Every share is capped before the penalty, so a level-95 player gets **106,110** from Uber Diablo solo or in a full party of 8. | VERIFIED (cap), DATA (exp) | intended (stock cap) but surprising |
-| Q5 | **The party bonus overflows 32 bits.** `(n−1)·X·89` wraps when X > 48.2M/(n−1). PD2 does it unsigned (`shr`). It only matters for Uber-level exp in 8-player games, and the cap in Q4 hides it almost completely. | VERIFIED (wrapping reproduced) | likely bug, negligible |
-| Q6 | **PD2 keeps +50% exp per extra player but raised monster HP to +70% per player.** More players give less exp per point of HP than stock. | DATA + READ | intended but surprising |
-| Q7 | **Dying exactly at the first exp point of your level gives +1 exp.** It sets exp to lo+1 and records a loss of 0. | VERIFIED | likely bug, harmless |
-| Q8 | **The merc share uses the player ExpRatio at the merc's level**, and is then doubled into the merc's exp. A merc can pass the player's level inside one award, because the level-up loop only stops at 98. | VERIFIED (ratio), READ (×2, loop) | intended but surprising |
-| Q9 | **PD's merc finder skips the merc while the player is in mode 12**, a player "kick"; the value looks like it was meant for monster "dead". Stock had no such check. | READ (`0x102D1711`) | unclear |
-| Q10 | **PD compares the full 32-bit party id with 0xFFFF**, while stock compared 16 bits. `0x6FCBBEB0` leaves the unit id's high word in eax. This only matters for player unit ids ≥ 65,536. | READ | likely bug, theoretical |
-| Q11 | **Stat 85 ≤ −101 would make a gain negative**, and the apply step would then subtract exp. No clamp exists. No PD2 source of negative stat 85 was found. | READ | theoretical |
-| Q12 | **The BH XP line** is a per-act average from an old area-level list. It shows 0.00% in maps and zones ≥ 137, and two ExpRatio rows are rounded wrong (83, 88). | READ + DATA | panel bug |
-
-**Not verified natively:**
 - the player-count routine `0x6FC579A0` and the `/players` override;
 - the merc cap and ×2 award (`0x6FCFB6B0` for mercs, `0x6FCFDCB0`), which were stubbed in the harness;
 - the BH level-id accessor;

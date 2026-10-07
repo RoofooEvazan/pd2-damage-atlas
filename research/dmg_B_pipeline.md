@@ -12,7 +12,7 @@ Status: **VERIFIED** = the real code ran natively in a harness and matched the f
 New native checks for this part: `harness/pipeB.c` + `harness/pipeB_check.py` (build line in the .c file).
 9 modes × 20,000 random cases, **0 mismatches**; a 3-mutation run (hit-class divisor, half-freeze rule,
 knockback compare) was detected by modes 1, 4 and 7, so the check is sensitive. Earlier VERIFIED pieces are
-cited from `damage.md`, `crit_cb.md`, `defense.md`, `bug_rathma_share.md`, `bug_boss_instadeath.md`.
+cited from `damage.md`, `crit_cb.md`, `defense.md`.
 
 | mode | real code run | what was confirmed |
 |---|---|---|
@@ -152,14 +152,13 @@ Order inside the pass:
      absorbed (+0x48) += a + a2; then `v = max(v, 0)` (PD clamps each type; stock let a negative phys eat other types).
    - Poison rate row 8 and length row 7 (stat 110 + pierce 336), cold/freeze length rows 5/6 use cold resist.
    - Player-owner damage meter: playerdata+0x1A8 += min(v>>8, life>>8).
-   - **B.rathma_share** (bug, `bug_rathma_share.md`): defender class 0x3A7/0x3A8 with both slots set → `v = v/2`,
-     partner life −= v.
+   - **B.rathma_share**: defender class 0x3A7/0x3A8 with both slots set → `v = v/2`, partner life −= v.
 7. **B.total**: +0x4C = phys + fire + light + magic + cold + poison(one frame). Burn (+0x14) is **not** in the
    table: burning ignores fire resistance, absorb and immunity (READ, stock).
 
 Curses/auras never enter this pass directly: they change the defender's stats. PD 0x102C0540 halves each
 negative contribution to 36/37/39/41/43/45 when the monster's **base** value is > 99 (**B.immune_halving**,
-VERIFIED; stock 0x6FC6E230 used ÷5; the Confuse path still uses ÷5).
+VERIFIED; stock 0x6FC6E230 used ÷5).
 
 ---------------------------------------------------------------------------------------------------------
 
@@ -297,8 +296,7 @@ pierce; +0 has no 0x20 → no events, so no chains; then PD post-hit (get-hit po
 78 only: the thorns owner's Open Wounds (135) is rolled on the target (0x102AF060, event 5, stat 135 layer 0)
 ```
 Timing: event 3 fires **at impact on every melee attempt — hit, miss or block** (0x6FCFEE62) and **also at swing
-start** from the fill (0x6FCFD97B) for successful hits by players or mercs. Players are exempt, so only mercs
-take melee thorns twice per connecting swing (see quirks).
+start** from the fill (0x6FCFD97B) for successful hits by players or mercs.
 
 ### 5.2 Iron Maiden (stat 131 `thorns_percent`) — D2Game 0x6FCB8A70 — VERIFIED (mode 9, 20k)
 ```
@@ -336,8 +334,7 @@ PD2 moved it: the stock call in the melee execute is NOP'd; PD 0x1026EDD0 calls 
 - **B.absorb_heal / leech heal** 0x6FCFB570: nothing if the unit is dead or has state 92 `death_delay`;
   `life = min(life + x, maxlife)`; the SetStat (0x6FCFB5B8) is PD 0x10268600: refused when old **and** new life
   are ≥ (100 − stat 488)% of max. This gate also applies to absorb healing and Life Tap (same SetStat).
-- Monster regen tick 0x6FC97CB0 clamps to ≥ 1 HP and can overflow near 0x7FFFFFFF (`bug_boss_instadeath.md`);
-  PD 0x102689B0 caps regen to 30 in PvP levels.
+- Monster regen tick 0x6FC97CB0 clamps to ≥ 1 HP; PD 0x102689B0 caps regen to 30 in PvP levels.
 
 ---------------------------------------------------------------------------------------------------------
 
@@ -346,8 +343,7 @@ PD2 moved it: the stock call in the melee execute is NOP'd; PD 0x1026EDD0 calls 
   animation.
 - Post-hit 0x6FCFCF20: defender with state 54 and dying → flag 0x5C only. Monster dying → 0x6FCFEEE0 (monster
   death); player → mode DT (0x6FC98430). Mode DT start for monsters is the mode table row 0x6FD1A498, **patched
-  to PD 0x102C11F0** (keys/sigils/maps, extra drops, Rathma/boss phase logic, then stock 0x6FC96270; `drops.md`,
-  `bug_rathma_share.md`).
+  to PD 0x102C11F0** (keys/sigils/maps, extra drops, Rathma/boss phase logic, then stock 0x6FC96270; `drops.md`).
 - **PD Sacrifice kill branch** (PD 0x1026EDD0 → timer 0x10270190): when the killing skill is 96 Sacrifice (or its
   missile), after the corpse animation (anim frames − 6, clamped 3–30) an area hit (0x102EC960, callback
   0x102703B0) is made. Its damage uses the skill's elemental min+max (<<7, ×Skills+0x154 %) plus the overkill
@@ -396,14 +392,14 @@ leech halved for missiles and PD area hits; stat 488 heal gate; CB/OW rewritten 
 ranged, lightning as lightning, players exempt, OW trigger; knockback and slow disabled in PvP, slow not on prime
 evils; **stun** caps (uniques 90 % resist, bosses/immobile immune, merc 13 frames, Mind Blast fixed); **half
 freeze ≥ 2 = unfreezable & unchillable**; **poison per player**; **Iron Maiden on missiles**; Sacrifice overkill
-explosion; skill-on-block via timer; skill-on-cast event; Rathma share (bugged); damage meter.
+explosion; skill-on-block via timer; skill-on-cast event; Rathma/Mendeln damage share; damage meter.
 
 ---------------------------------------------------------------------------------------------------------
 
 ## 10. Discrepancies with our JS models
 - `adv/engine/combat.js` — player → monster DPS: physical ignores monster DR (stat 34; `map_mon_normal_damage_reduction`
   400) and physical absorb; poison and burn: burn not modelled; leech ignores the overkill clamp. None of these
-  are code bugs in the model's normal case (no DR on most monsters); not changed.
+  matter in the model's normal case (no DR on most monsters); not changed.
 - `adv/re/damage.js` — matches the VERIFIED pieces used here (effectiveRes, applyResist, leech, CB, OW).
 - `adv/re/defense.js` — the player-side get-hit rule is not modelled; §4.1 gives it (same rule as monsters).
 - No JS was changed, so the existing tests are unaffected.

@@ -528,22 +528,6 @@ PD2Vendors.deathGoldLoss(clvl, inventory, stash, realm); PD2Vendors.GOLD
 
 ---
 
-## 6. Bugs and quirks
-
-1. **Circlet → Diadem is impossible in PD2** (ci0 has ubercode `ci1` and no ultracode; stock had ci2/ci3). Only Coronet slots can become Diadems (1.2 % at clvl 90). *Intended but surprising* (a data change).
-2. **Unique rolls on Circlets/Coronets always turn rare.** There is no unique for `ci0`/`ci1`. The same happens for any base whose uniques are all above the slot's ilvl, or are already generated in this game. *Intended but surprising.*
-3. **Gamble price uses clvl and fixed 50/25, not the ilvl and DifficultyLevels 90/33** of the real upgrade roll. The price's "expected base value" does not match the actual odds (price assumes an exceptional share of (clvl−lvl)·0.5 %; the roll gives 0.9 %). It is stock behaviour. *Intended but surprising.*
-4. **Superior items are priced like normal items** (PD2 skips their stat costs). *Intended* (it removes the stock superior-armor buy/sell margin).
-5. **Replenish-durability repair quirk (stock):** with stat 252 the repair cost is `(maxDur−1)/maxDur` of the full cost whenever the item is below max−1, however little is missing. *Likely bug* (stock, kept by PD2).
-6. **Three identical quivers in NM/Hell.** Vendors carry `aqv`, `aqv2` and `aqv3` as permanent items, and PD2's per-difficulty rewrite maps all three to the same code. *Unclear* (cosmetic).
-7. **The gamble window re-rolls on every open**, and the RNG is the shared game seed. *Intended* (stock).
-8. **Unidentified items sell for base value only** (no affix, stat or unique cost). *Intended* (stock).
-9. **Class items and ethereal items sell for ¼** (both apply: ethereal class items sell for 1/16). *Intended* (stock).
-10. **The buy transaction mode comes from the client packet.** In the 0x32 buy packet (+9 upper word), `0x6FCDE640` only checks ownership for modes 0 and 2; any other mode goes straight to pricing. The rest of the purchase path (`0x102D6BA0`) was not traced, so exploitability is unknown. *Unclear.*
-11. **Throwing weapons ignore quantity** when bought or sold in PD2, so a full stack and a nearly empty one are worth the same. *Intended but surprising.*
-12. **The stat setters zero gold on overflow** (`0x6FC21040`/`0x6FC21670`). *Unclear* (depends on the callers' checks).
-13. **Shared stash gold is invisible to BH's "Stash Gold" line** (stat 15 only) and is never lost on death. *Intended but surprising.*
-
 ## Unverified
 
 - **READ only:**

@@ -163,7 +163,7 @@ differences:
 - TC entries are written with quotes.
 - Shield `mindam`/`maxdam`.
 - The ItemTypes `code` column.
-- A cell containing a single space, which the game parses as −16 (see issue 7).
+- A cell containing a single space, which the game parses as −16.
 - Missiles `*16` comment cells.
 
 `itemscode.bin` (calc byte code for weapons/armor/misc) differs because Misc's `calc1` changed. For example, map t11
@@ -355,18 +355,17 @@ PD2_DATA_SOURCE=mpq python3 adv/re/extract_minions.py         # -> adv/re/minion
   `python3 adv/engine/extract_engine_data.py adv/engine/engine-data-local.json /home/claude/pd2re/excel_mpq`
 - **Save decoding.** The save decoder (`adv/extract_save_data.py`) needs the loose branch for `dhm`/`pwl`/`dtm`.
 
-## 7. Issues and quirks
+## 7. Data-pipeline issues
 
 | # | issue | status | verdict |
 |---|---|---|---|
-| 1 | `tools/ias_sources.T()` and the extractors default to `data.zip`, an older snapshot. Misc, Levels, CubeMain, AutoMap, LvlPrest, LvlTypes and patchstring.tbl are stale | DATA + READ | tooling bug. The switch is added and the default is kept |
-| 2 | `excel_live/` is named "live" and AGENT_CONTEXT says `T()` "picks the right one", but excel_live is byte-identical to data.zip (e.g. Levels.txt) and T() always read the zip | DATA | tooling/documentation bug |
-| 3 | The zip's own TreasureClassEx refers to `t3b`, which its Misc lacks. drops.md §2 lists `t3b` among "unknown names dropped", but in live `t3b` (Kyovashad map, t3m) resolves | DATA | stale-data artefact, not a game bug |
-| 4 | Map tiers in drops-data/engine-data (from the zip) contradict PD's hard-coded T1–T3 level sets, which match the MPQ | DATA + READ | stale-data bug in our outputs |
-| 5 | hitcalc-data monster names come from the zip `patchstring.tbl` (e.g. "Invader Amazon" instead of the live "Corrupted Amazon") | DATA | stale-data bug in our outputs |
+| 1 | `tools/ias_sources.T()` and the extractors default to `data.zip`, an older snapshot. Misc, Levels, CubeMain, AutoMap, LvlPrest, LvlTypes and patchstring.tbl are stale | DATA + READ | tooling issue. The switch is added and the default is kept |
+| 2 | `excel_live/` is named "live" and AGENT_CONTEXT says `T()` "picks the right one", but excel_live is byte-identical to data.zip (e.g. Levels.txt) and T() always read the zip | DATA | tooling/documentation issue |
+| 3 | The zip's own TreasureClassEx refers to `t3b`, which its Misc lacks. drops.md §2 lists `t3b` among "unknown names dropped", but in live `t3b` (Kyovashad map, t3m) resolves | DATA | stale-data artefact |
+| 4 | Map tiers in drops-data/engine-data (from the zip) contradict PD's hard-coded T1–T3 level sets, which match the MPQ | DATA + READ | stale data in our outputs |
+| 5 | hitcalc-data monster names come from the zip `patchstring.tbl` (e.g. "Invader Amazon" instead of the live "Corrupted Amazon") | DATA | stale data in our outputs |
 | 6 | `extract_skilldmg.py` defaults to the loose folder (D1 test branch). No player value changes, but it adds 11 non-live skills | DATA | tooling issue |
-| 7 | The loader parses a cell that holds a single space as −16 (a u8 field becomes 240, a bit field becomes 1). Live effects: Misc `qey` TMogMin/Max = 240 (inert without TMogType), MonStats `willowisptotem` rangedtype = 1, Skills `MaggotEgg` scroll = 1, and the placeholder UniqueItems `Nethercrow` carry1 = 1 (row has no item code) | DATA (the .bin holds these values; the parser itself was not traced) | intended but surprising. Harmless except possibly willowisptotem AI; unclear |
-| 8 | The zip's `itemscode.bin` (1160 bytes) carries unreferenced byte code from an earlier compile; the MPQ's is 631 bytes | DATA | harmless |
-| 9 | The uploaded saves and `engine-data-local.json` belong to the loose D1/Corpse Instability branch, not to the Live DLL + MPQ pair | DATA + READ | unclear. Keep the two data sets separate |
-| 10 | `pd2maps.mpq`, `pd2assets.mpq` and `pd2monchars.mpq` are opened at the same priority but were not uploaded. If one of them contained `data\global\excel\*` files, the MPQ order would decide which copy is used | READ | unverified. pd2data.mpq is the only PD2 MPQ we have, and PD's hard-coded lists agree with it |
-| 11 | Whether PD2's launcher passes `-txt` or `-direct` is not visible in our binaries (Game.exe/launcher not uploaded). `-txt` cannot matter (MPQ bin == MPQ txt). `-direct` would only matter if loose files sat in the live install, and PD's hard-coded data contradicts the loose folder | READ + DATA | unlikely to matter |
+| 7 | The zip's `itemscode.bin` (1160 bytes) carries unreferenced byte code from an earlier compile; the MPQ's is 631 bytes | DATA | harmless |
+| 8 | The uploaded saves and `engine-data-local.json` belong to the loose D1/Corpse Instability branch, not to the Live DLL + MPQ pair | DATA + READ | unclear. Keep the two data sets separate |
+| 9 | `pd2maps.mpq`, `pd2assets.mpq` and `pd2monchars.mpq` are opened at the same priority but were not uploaded. If one of them contained `data\global\excel\*` files, the MPQ order would decide which copy is used | READ | unverified. pd2data.mpq is the only PD2 MPQ we have, and PD's hard-coded lists agree with it |
+| 10 | Whether PD2's launcher passes `-txt` or `-direct` is not visible in our binaries (Game.exe/launcher not uploaded). `-txt` cannot matter (MPQ bin == MPQ txt). `-direct` would only matter if loose files sat in the live install, and PD's hard-coded data contradicts the loose folder | READ + DATA | unlikely to matter |

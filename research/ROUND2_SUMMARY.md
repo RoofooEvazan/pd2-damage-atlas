@@ -7,7 +7,7 @@ This round covers loose ends, smaller systems, progression, maps and items, in t
 - **READ:** read from the disassembly only.
 - **DATA:** from the tables.
 
-**Independent audit:** every VERIFIED check was re-run by a separate checker, with 0 mismatches and every mutation caught. Its findings and 17 correction notes are in `AUDIT_2.md`.
+**Independent audit:** every VERIFIED check was re-run by a separate checker, with 0 mismatches and every mutation caught. Its findings and correction notes are in `AUDIT_2.md`.
 
 ---
 
@@ -33,11 +33,6 @@ The live game reads `pd2data.mpq`, the copy in the Live folder. The uploaded `da
 
 ## 1. Loose ends
 
-**Exploit leads (`exploit_checks.md`, VERIFIED)**
-- **Power Strike:** its melee hit really does get +1000% damage, so the weapon roll is ×11.
-- **Charged Strike and Lightning Strike:** they also add small hidden damage % (their bolt count and chain radius).
-- **Splash:** the ordering is real, but the added damage is still resisted, so it does *not* bypass immunities.
-
 **Projectile pierce (`pierce_ow.md`, VERIFIED)**
 - Pierce is rolled once, when the missile is created, not on each hit.
 - A player's roll seed is always 0, so the number of pierces is fixed by the total chance:
@@ -51,7 +46,6 @@ The live game reads `pd2data.mpq`, the copy in the Live folder. The uploaded `da
 
 **Open wounds (`pierce_ow.md`, VERIFIED)**
 - There is one state per monster, and up to 3 of your own procs add together.
-- **Two attackers:** another player's proc resets the stack counter to 1, so with two attackers the drain has no upper limit.
 
 **Whirlwind (`whirlwind.md`, VERIFIED)**
 - One weapon hits a flat 5 times per second, whatever the IAS or weapon speed. Dual wield hits 8.33/s, and 10/s on PvP maps.
@@ -59,7 +53,7 @@ The live game reads `pd2data.mpq`, the copy in the Live folder. The uploaded `da
 - Each hit takes the nearest target that wasn't hit last.
 
 **Advanced Stats page**
-- Every line where the in-game panel's math is wrong now shows the game's real value next to it.
+- Every line where the in-game panel's math differs now shows the game's real value next to it.
 - It also uses the live data.
 
 ## 4. Smaller systems
@@ -92,20 +86,11 @@ The live game reads `pd2data.mpq`, the copy in the Live folder. The uploaded `da
 - **Leech:** mercs skip the difficulty divisor, so in Hell they leech 3× what a player with the same % does.
 - **Skill picks and aura start:** covered in the write-up.
 - **Equipment:** PD2's equip rules.
-- **Bugs:**
-  - A Hell-hired merc below its row's base level gets negative growth.
-  - The merc panel shows wrong damage and resistances (display only).
 
 **Map system (`maps.md`)**
 - **Map-open rules:** covered in the write-up.
 - **Mods:** magic maps always get 1 prefix and 1 suffix. Rare maps always get 6 affixes (VERIFIED).
 - **Density and bosses:** covered in the write-up.
-- **Bugs:**
-  - The mod applier loses Splash's skill on about 37% of rare T1–T3 maps and 71% of T4 (VERIFIED).
-  - "Physical damage as extra element" adds only +1 damage (VERIFIED).
-  - T2/T3 maps mostly roll lower-tier affixes.
-  - Six unique-map boss-drop mods do nothing in these DLLs.
-  - Fortify gives +40% damage, not the +20% its description says.
 
 ## 2. Items
 
@@ -125,10 +110,6 @@ The live game reads `pd2data.mpq`, the copy in the Live folder. The uploaded `da
   - White items: 50% brick.
   - A brick comes back as a new rare with its own corruption outcome.
 - **Crafted items:** item level = ⌊clvl/2⌋ + ⌊base ilvl/2⌋. Crafts at item level 71+ always get 4 random affixes.
-- **Bugs:**
-  - **T4 map corruption:** 2/3 of attempts do nothing, and they lock the map against map orbs and further corruption.
-  - **Skull reroll:** rare maps can still be rerolled with skulls.
-  - **Three magic/rare T1 maps** give a white T1.
 
 **Gambling, vendors, prices and gold (`vendors.md`, VERIFIED gamble fill + PD2 price code)**
 - **Gamble odds:** unique 0.05%, set 0.1%, rare 10%. MF does nothing.
@@ -145,4 +126,3 @@ The live game reads `pd2data.mpq`, the copy in the Live folder. The uploaded `da
 - Which Npc.txt quest flags change prices.
 - Merc aura activation: it seems to start only through a 1-in-101 pick. Worth one in-game look.
 - Superior and low-quality rolls, and the set/unique property application: READ only.
-- The vendor buy handler: the client packet chooses the transaction mode, and item ownership is checked only for buy and gamble. The rest of that path was not traced, so whether it can be abused is unknown.

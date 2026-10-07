@@ -16,7 +16,7 @@ READ = read from the disassembly. DATA = a table value. PLAUSIBLE = follows from
 | harness | code run | cases | result |
 |---|---|---|---|
 | `harness/pvp.c` + `pvp.py` | PD 0x1026D1D0 (damage-percent / PvP scaler), with PD's own 0x102CE840, 0x102CEAE0, 0x102CEB10 and D2Game's type table 0x6FD22AB0 | 6,588 (every skill id 0–619 × 3 difficulties × levels 1/157/166, 14 pet classes, mercs, prime evils, bosses, safe zone) | table in §4 (the output *is* the code's) |
-| `harness/monatk.c` + `monatk.py` | stock D2Game 0x6FC97240 (monster attack-time AR / damage / elemental set-up) with the real D2Common scaler #11089 0x6FDA4A00 and the real PD2 `monstats.bin` / `monlvl.bin` | 30,000 random (1,240 monster rows, all modes, levels 0–120, 1–12 players, ladder/L-flag, classic/expansion, RNG seeds) | 0 mismatches against the model in §2.3 (which includes two stock quirks found here) |
+| `harness/monatk.c` + `monatk.py` | stock D2Game 0x6FC97240 (monster attack-time AR / damage / elemental set-up) with the real D2Common scaler #11089 0x6FDA4A00 and the real PD2 `monstats.bin` / `monlvl.bin` | 30,000 random (1,240 monster rows, all modes, levels 0–120, 1–12 players, ladder/L-flag, classic/expansion, RNG seeds) | 0 mismatches against the model in §2.3 |
 
 Stubs: pvp.c stubs only D2Common #11104/#10064/#10278/#10511, PD's owner lookup 0x102CB180 and PD's safe-zone test
 0x102CF760. monatk.c stubs #10195 (stat list), #10343, #10830 (alignment), #10973 (GetStat: level, players) and
@@ -84,22 +84,14 @@ classic (game+0x70 == 0), NM/Hell, Align != 1:  min = tdiv(10·min,12), max = td
 expansion: f = player factor (stat 100); min/max/TH += (x·f)>>7 (rounded toward zero)
 SetStat 21 = min, 22 = max, 19 = TH (base stat list)
 for slot i = 1..3: if ElMode(i) == mode and ElPct(i)[d] > 0 and (ElPct >= 100 or rand(100) < ElPct):
-     emin/emax/edur = #11089 with flag 0x40+i   <-- quirk: see below
+     emin/emax/edur = #11089 with flag 0x40+i
      expansion: all three get the player factor
      ElType 10 ('rand'): type = rand(5)+1 (fire, ltng, mag, cold, pois); edur = 25 if 0
      type 1 fire -> 48/49; 2 ltng -> 50/51; 3 mag -> 52/53; 4 cold -> 54/55 + 56 length;
      5 pois -> 57 = 10·min, 58 = 10·max, 59 = 2·dur; 6 life drain -> 60/61; 7 mana drain -> 62/63;
      8 stamina drain -> 64/65; 9 stun -> 66 = dur; 11 burning -> 316/317, 315 = dur
 ```
-**Quirk D.q.el_slot_uses_el1 (VERIFIED, stock bug).** The scaler takes bit flags (0x40 = El1, 0x80 = El2,
-0x100 = El3). 0x6FC97240 passes `0x40 + slot`, so El2 and El3 always receive **El1's** MinD/MaxD/Dur (their own
-Mode, Type and Pct are used). 55 of the 61 PD2 rows that have an El2/El3 type get numbers different from their own
-columns, e.g.:
-- Big heads (Hell El2 lightning, 35 %, A1): own 10–20, uses El1's 160–200 (map variants up to 320–400).
-- Willowisps (El2 lightning 100 %, S1): own 5–190, uses 200–300 (262–393 in `willowisp1Library`).
-- Uber Duriel El2 cold (100 %, A1): own 42–84 / 100 frames, uses El1's 0–0 / 30 → the cold never rolls (min 0).
-- Yetis, claw vipers, blood lords 6/7, skeletons 6–8, `sandraider3DjinnLight` (listed by `monatk.py`).
-**Quirk D.q.noratio_no_elemental (VERIFIED).** For `noRatio` rows the scaler writes the raw El values to other
+**noRatio rows (VERIFIED).** For `noRatio` rows the scaler writes the raw El values to other
 output slots, so min/max read back as 0 (only the duration survives). Of the 35 noRatio rows only the Fire Golem has
 an El type; its fire does not come from El1.
 
@@ -144,7 +136,7 @@ otherwise the minion constants.
 | 30 aura enchanted | 0x6FC44CD0 → PD 0x102C62B0 | see §3.3 |
 
 Normal-difficulty minions of an enchanted unique get min 0 → **no elemental bonus at all** (0x6FCFCD80 skips a type
-whose min stat is < 1 even if the max is 50 % DM) (READ, D.q.minion_normal_enchant).
+whose min stat is < 1 even if the max is 50 % DM) (READ).
 
 ### 3.2 Event handlers (D2Game 0x6FD2F448, 6 events × 43 umods; dispatcher 0x6FC468E0, READ)
 Event 0 = attack, 1 = spawn/init, 2 = death, 3 = the monster hit something, 4 = the monster was hit, 5 = missile.
@@ -349,21 +341,10 @@ for players on entering a map level (0x102DC050 with the player list). Monsters 
 map level and MonStats `Align` (+0x4C) = 0; the stats go into a new stat list tied to state 198 (`map`), which also
 blocks a second application.
 - Generic: add the stat (value 0 → 1).
-- Stat 76 (maxhp%) on monsters: applied directly to stat 7 (`bug_boss_instadeath.md`).
-- **Physical as extra element (432–436, D.q.phys_as_extra_zero, READ, likely bug).** `min = ftol(v/100 · stat21)`,
-  `max = ftol(v/100 · stat22)` → lightning 50/51, cold 54/55 (+56 = param or 25), fire 48/49, poison 57/58 (+59 =
-  param or 125), magic 52/53. But stats 21/22 of a monster are only written by the attack-time routine 0x6FC97240
-  (§2.3); nothing sets them during spawn (checked every SetStat 21/22 site: item code, umods 14/19, 0x6FC97240), and
-  this runs right after spawn. So the added elemental damage should be **0**. If it ever read real values, the
-  poison version would be weak: poison stats are per-frame 1/256 units, so v % of the physical *points* over 125
-  frames is only 125/256 ≈ 49 % of the intended amount.
+- Stat 76 (maxhp%) on monsters: applied directly to stat 7.
 - **PvP levels (157/159/166), every unit:** stat 443 extra_bonespears −4, 481 extra_holybolts −4, 491 pvp_disable 1,
   482 pvp_cd 25 (NM/Hell) or 492 pvp_lld_cd 25 (Normal). Players in **166**: +400 stat 27 (manarecoverybonus), +400
   life, +200 mana.
-- **Key 10 (map_glob_sundermonsters) on monsters of the matching level** (D.q.sunder_cascade, READ, likely bug):
-  for fire, cold, light, poison, physical, magic resist in that order the added value is `−res` when res > 0 (brings it
-  to 0); when res ≤ 0 the code re-uses the **previous element's** register (`cmovle`), so e.g. fire 50 / cold −20 gives
-  cold −50 → −70. (Monster defense; listed here because it is the same applier.)
 
 ### 5.3 Zone keys (0x102DC520, READ)
 Key 0 density ×(1+v/100); 1 area level += v; 2 champion/unique counts ×(1+v/100); 3 add a monster type; **4 skirmish**:
@@ -390,8 +371,8 @@ X + rand(Y−X) (Y ≤ X → X); × src/128. Cold length += stat 56 × src/128 o
 Life drain 60/61 and stamina 64/65: stock `stat << 8`. **Mana drain 62/63: PD2 uses `<< 4` (×16) for monster
 attackers** and `<< 8` for everyone else. Combined with the Mana Burn umod's `<< 1` (§3.1):
 - Mana Burn unique, Hell, DM 100: stats 132–200 → **8.25–12.5 mana per hit** (stock: stat `<<8` twice → 16,896+ mana,
-  i.e. all of it). D.q.manaburn_nerf (intended).
-- El type 7 'mana' monsters (35 rows): stats are raw points → PD2 drains **x/16 mana** (stock x). D.q.mana_el_16.
+  i.e. all of it).
+- El type 7 'mana' monsters (35 rows): stats are raw points → PD2 drains **x/16 mana** (stock x).
 
 ### 6.4 Monster drain on the target (stock leech 0x6FCFBA40, monster branch 0x6FCFBBCB, READ)
 Fields are amounts, not percents: life = min(life field, physical dealt), mana = min(mana field, target's mana),
@@ -433,11 +414,9 @@ when its 5th argument (the apply routine's arg 3) is non-zero** — see Open que
   at 30 per tick unless state 205 (PD 0x102689B0 on 0x6FC97CBB); −4 extra bone spears / holy bolts; pvp cooldown
   stats; level 166 players +400 life, +200 mana, +400 % mana recovery.
 - CB vs players divisor 10 (`B.cb`); OW (`B.ow`).
-- **Leech outside the PvP levels scales twice** (D.q.pvp_leech_squared, READ + VERIFIED part): the percent also
+- **Leech outside the PvP levels scales twice** (READ + VERIFIED part): the percent also
   multiplies the leech fields (they carry the attacker's leech % at that point), and leech is computed from the
   already-scaled physical damage, so life leech per hit ∝ P² (Hell: 0.36 % of normal).
-- Pets: scaled by the owner's *currently selected* skill (§4), e.g. a Necromancer holding Corpse Explosion makes
-  his skeletons do ×0.65 in Normal/NM (D.q.pvp_pet_owner_skill, VERIFIED).
 
 ## 9. Monsters hitting mercenaries and summons
 - Same roll and apply; defender type 1. Damage percent 100 % except prime evils (300 % vs summons, 100 % vs mercs) and
@@ -449,11 +428,9 @@ when its 5th argument (the apply routine's arg 3) is non-zero** — see Open que
 - Chill length on monster defenders ÷ MonsterColdDivisor (1/2/4), freeze ÷ MonsterFreezeDivisor.
 
 ## 10. Bosses and ubers (pointers)
-- `uber_review.md`: per-boss numbers, Lucion phase ×2+3 / ×3+6 skill values (0x10300141), Tristram minion spawns,
-  Static Field exclusions. `bug_boss_instadeath.md`: pinnacle scaler (+4n all skills and 7n+2t absorbs for Clone,
-  Rathma, Lucion), life overflow.
+- Per-boss numbers: Lucion phase ×2+3 / ×3+6 skill values (0x10300141), Tristram minion spawns,
+  Static Field exclusions; pinnacle scaler (+4n all skills and 7n+2t absorbs for Clone, Rathma, Lucion).
 - Uber Mephisto: Conviction level 20 (stock special case kept in PD 0x102C62B0).
-- Uber Duriel's El2 cold does nothing (§2.3 quirk).
 - The uber Ancients have MonStats Crit 0 and Drain(H) 0.
 
 ---------------------------------------------------------------------------------------------------------------------
@@ -499,9 +476,9 @@ callback patches above, ES/Bone Armor/Cyclone absorb functions, damage-to-mana 0
 | model | issue | action |
 |---|---|---|
 | `defense.js playersHP` | stock 50 %/player; PD2 table is 70 %/player (2–8) | **fixed** |
-| `defense.js monsterAt` elemental | used each slot's own El min/max/dur; the game uses El1's for El2/El3 and 0 for noRatio | **fixed** (+ `extract_monsters.py` now stores `slot` and `El1`; `monsters.json` regenerated, identical otherwise) |
+| `defense.js monsterAt` elemental | El min/max/dur per slot did not match the attack-time code (§2.3) | **fixed** (`monsters.json` regenerated) |
 | `defense.md` §1.2 | "monster owned by a monster deals 50 %" | corrected to 100 % |
-| `combat.js monstersOnYou` | physical only: ignores El damage, MonStats Crit ×2 (5 %), PD crit/DS, map mods, ES/Bone Armor, dodge/avoid/evade; block uses the displayed chance | not changed (a model limit, not a formula bug); worth adding El + Crit |
+| `combat.js monstersOnYou` | physical only: ignores El damage, MonStats Crit ×2 (5 %), PD crit/DS, map mods, ES/Bone Armor, dodge/avoid/evade; block uses the displayed chance | not changed (a model limit); worth adding El + Crit |
 | `defense.js monsterAt` | poison El reported as raw MonStats min/max/dur; the game's stats are ×10/×10/×2 per-frame units | documented only |
 | `combat.js effectiveLife` | ignores ES/Bone Armor (which act before resistances) | documented only |
 
@@ -517,9 +494,7 @@ Tests after the fix: `adv/engine/test_combat.js`, `test_derive.js`, `test_armory
 2. Spectral Hit's random elemental add (umod 27 event 0, 0x6FC42B60) not decoded.
 3. Fire Enchanted death explosion: the output slot (MaxHP) and the `<<6` split are READ only; the resulting numbers look
    small (≈ 0.4–0.6 % of the row's scaled max life as physical + the same as fire in Hell).
-4. Phys-as-extra map mods: confirm in game that they add nothing (or find a path that sets stats 21/22 before spawn
-   completes).
-5. The PD skill-id writers at 0x1026E9CF/0x1026EA1F/0x1026FB22/0x102710E6 (which missiles/areas set the PvP skill)
+4. The PD skill-id writers at 0x1026E9CF/0x1026EA1F/0x1026FB22/0x102710E6 (which missiles/areas set the PvP skill)
    were only skimmed.
-6. `0x102ED580` (0x6FCFD41B) and `0x102EF9A0` (0x6FCFC076) not traced.
-7. "Corrupted ears presets" were not found as damage code; no ear-related branch appears in these paths.
+5. `0x102ED580` (0x6FCFD41B) and `0x102EF9A0` (0x6FCFC076) not traced.
+6. "Corrupted ears presets" were not found as damage code; no ear-related branch appears in these paths.

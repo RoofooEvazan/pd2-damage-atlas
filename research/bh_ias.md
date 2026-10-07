@@ -86,7 +86,7 @@ BH resolves the D2 imports through version tables. Index 0 = 1.13c; all of these
 5. **Dual wield.** If the unit can dual wield and has two weapons:
    - it keeps the faster weapon, compared by stat68 + stat93 (the PD2 rule);
    - it recomputes base = stat68 and s = stat68 + EIAS (with SQ, both −30);
-   - **X is dropped here.** This is a BH bug for dual-claw Dragon Tail and dual-wield Double Swing.
+   - **X is dropped here**, so BH leaves it out for dual-claw Dragon Tail and dual-wield Double Swing.
 6. **Start frame.** It sets unit mode = skill mode temporarily, calls #10031 to get `start`, then restores the mode.
 7. **Clamps.**
    - max = 175 (256 for Charge).

@@ -3,7 +3,7 @@
 Part of the 4-way damage deep dive. A = weapon/physical build-up (incl. weapon-based skills), B = defender pipeline
 (resist, pierce, halving, crit, CB, OW, absorb, DR, leech, thorns), D = monster->player and PvP. This file covers what
 happens between "a spell is cast" and "the damage struct reaches B", plus everything that ticks afterwards.
-Flow data: `adv/re/flow/flow_C.json` (34 stages, 57 edges, 33 quirks, 118 skills; schema `adv/re/flow/SCHEMA.md`; rebuilt by `adv/re/flow/gen_flow_c.py` from the data.zip tables).
+Flow data: `adv/re/flow/flow_C.json` (34 stages, 57 edges, 118 skills; schema `adv/re/flow/SCHEMA.md`; rebuilt by `adv/re/flow/gen_flow_c.py` from the data.zip tables).
 
 **Status key** (as FINDINGS.md): **VERIFIED** = the game's own code ran natively in the harness and matched a model on
 every case; **READ** = read from disassembly; **DATA** = follows from the shipped tables; **INFERRED** = deduced from READ facts.
@@ -186,7 +186,6 @@ else: ignore                                                             (weaker
 - Stock 1.13c kept one poison state per monster regardless of source.
 - Totals: points per second = rate x 25/256; per poison = rate x len/256. Skill poison: rate = E (with mastery, HitShift
   usually 3-5), len = #10510. Example Poison Nova: EMin 16 << 4 = 256 -> 1 point/frame at level 1.
-- Rathma/Mendeln clones: poison rate and length are halved, not shared (bug_rathma_share.md, VERIFIED).
 
 ### 3.3 Burning (C.dot_burn) - D2Game 0x6FCFC940 (READ)
 Needs rate > 0 **and** length > 0; state 115, hpregen = -rate; replaced when the new rate >= old; one state per monster.
@@ -242,9 +241,7 @@ then normal execute: pierce, PD negative-resist halving, DR, resist
 ```
 StaticFieldMin in PD2 = 55 / 70 / 85 % (normal / nightmare / hell; stock 0/33/50). Filter PD 0x1026F150 skips monster
 classes 0x315, 0x3A5-0x3A8 (Rathma/Mendeln), 0x458. The -lightning-resist debuff (aurastat, length 125 + 5 x Lightning
-Mastery blvl) is applied as a state after the damage. **Quirk:** the stock pre-division assumes the full negative resist
-is applied later; PD2 halves it, so the result is d x (100 - r_eff)/(100 - r): Static deals 83% of nominal at -50 and 75%
-at -100 lightning resist (pierce also counts in r_eff).
+Mastery blvl) is applied as a state after the damage.
 
 ### 4.5 Corpse Explosion (C.corpse_explosion) - PD do 55 0x102FA7F0 (READ)
 Corpse life = (MonStats x MonLvl HP min + max) << 7 (the average, 1/256) for the corpse's class and level (normal /
@@ -285,7 +282,7 @@ do-func serves `mon death sentry` (Death Sentry). DifficultyLevels MonsterCEDama
 - **Crit:** pets' own stats only (usually none); pet missiles resolve the pet as owner.
 - Physical pets: attack rebuilt each attack from MonStats x MonLvl (noRatio = raw) + stats; SkillDamage pets (Raven,
   Spirit Wolf, Dire Wolf, Grizzly, Decoy) add the skill's MinDam/MaxDam at the owner's level (0x6FCBE330).
-- Shadows: do-func 49 calc2 bug (VERIFIED, minions.md). Revives: corpse monster at min(mlvl, clvl).
+- Revives: corpse monster at min(mlvl, clvl).
 - Poison from pets keys the poison state by the pet (each creeper/mage separately).
 
 ### 5.2 Mercenaries (minions.md)
@@ -382,26 +379,18 @@ Armageddon/Hurricane, 144 hydras.
 | 501 | deep_wounds | OW damage |
 | 504 | curse_effectiveness | target-side curse value reduction |
 
-## 10. Quirks (full list with verdicts in flow_C.json)
-Most important: Fire Ball/Combustion double hit on the struck monster (unclear); Static Field weaker against negative
-resist (likely bug); Static floor 55/70/85%; poison never stacks and a weaker poison is dropped; NextHit makes
-overlapping missiles of one cast hit once; spell physical damage can crit; pets snapshot your mastery and synergy
-levels, get no pierce; one roll per aura tick / per explosion; PD splash can be blocked but not missed; Blessed Hammer
-has no undead bonus; Holy Bolt hurts all monsters; CE ignores the corpse's real life; per-frame fire scales MDR by
-DamageRate/1024; chill /1/2/4 by difficulty; cannot-be-frozen also blocks chill.
-
-## 11. Discrepancies with the JS models
+## 10. Discrepancies with the JS models
 - **`adv/engine/combat.js` (fixed):** poison was added into the per-hit damage and multiplied by attacks per second,
   i.e. stacked. PD keeps one poison per player, so the DPS now uses `after x min(hits/s, 25/len)` for poison
   (`attackOn`). Per-hit numbers are unchanged; all engine tests still pass.
 - `adv/re/skilldmg.js`: numbers are per missile / per tick. Not modelled: the Fire Ball direct+splash double hit, PD2
   splash of Fire Bolt/Ice Bolt/Blizzard, Static Field (percent of life), CE, NextHit limits, missile crit. Its `server`
-  rows are correct per missile. No code change (needs design, not a clear bug).
-- `adv/re/minions.js`: computes the copied mastery stats (passivestats) but not the pets' spell damage; notes it. No bug.
+  rows are correct per missile. No code change (needs design).
+- `adv/re/minions.js`: computes the copied mastery stats (passivestats) but not the pets' spell damage; notes it.
 - `adv/engine/engine.js` differences listed in skilldmg.md (C precedence, no synergy gate) remain; the Fog precedence
   matters for CE radius, Static/Inferno -resist and Summon Grizzly count.
 
-## 12. Open questions
+## 11. Open questions
 1. Fire Ball double hit: confirm in game (or run the whole PD collision 0x102723E0 natively) that the struck monster takes
    splash + direct. The return value is VERIFIED; the collision handling of bit 2 is READ.
 2. Curse struct field +0x18 scaled by curse_effectiveness: which stat each curse carries there (READ only).

@@ -698,7 +698,7 @@ Rows are MPQ line numbers.
 | Imbue Rare (`imra`) / Ready (`irra`) | white map + `imra` + jewel + rune (6, 12, 18); or + `irra` | rare map |
 | Scour (`scou`) | magic or rare map (7, 8, …) | white map |
 | Upgrade Map (`upmp`) | 3 × T1 (or T2) maps of any quality + `upmp` (21–34) | a random **white** T2 (T3) base, level L = 100 % of the first map's level |
-| 3 → 1 | 3 maps of one tier (2261–2275) | a random base of the same tier. T2/T3: 3 white → white, 3 magic → magic, 3 rare → rare. **T1: rows 2261/2263 take any quality and come first, so 3 magic or 3 rare T1 maps also give a *white* T1.** Rows 2270/2271 are never reached (§8). |
+| 3 → 1 | 3 maps of one tier (2261–2275) | a random base of the same tier. T2/T3: 3 white → white, 3 magic → magic, 3 rare → rare. **T1: rows 2261/2263 take any quality and come first, so 3 magic or 3 rare T1 maps also give a *white* T1.** Rows 2270/2271 are never reached. |
 | Dungeon Scarab (`scrb`) | any-quality T3 map + `scrb` (2169–2171) | a **rare T4** with fixed extras: monster FRW +20–30, AR%/pierce 80–100, splash, +10–20 % life and cannot be frozen, +40–50 % XP. 3 rare T4 give a new rare T4 with the same extras (2260). |
 | Fortify (`fort`) | non-white T1–T3 map (2056–2058): skirmish 50 and player FRW +30. Unique map (2280): skirmish 50 only. | refused if already fortified. White maps are blocked (2053–2055). |
 | Standard of Heroes (`std`) | any non-white map (340, needs stat 458 = 0) | `heroed` + 20 MF, 20 GF, 20 density, 10 XP |
@@ -904,28 +904,8 @@ C.recipeOutcome(1724, C.makeItem({code:'xhg', quality:'mag', ilvl:70}), 90)
 
 ---------------------------------------------------------------------------------------------------------------------
 
-## 8. Bugs and quirks
+## 8. Left unverified
 
-| # | Finding | Status | Verdict |
-|---|---|---|---|
-| 1 | **T4 map corruption is 2/3 duds.** Phase 1 (row 341) rolls corruptor 1..3000 for every map, but the T4 outcome rows 2077–2086 stop at 1000. Each T4 outcome is 3.33 %, not 10 %. 66.7 % of attempts do nothing, and the shard is given back. | DATA + READ | likely bug (the MPQ re-scaled T1–T3 to 3000 for Djinn/Na-Krul but not T4) |
-| 2 | A dud leaves stat 361 = X on the item, and every `op 18 361 = 0` row then refuses it. That map can no longer be corrupted or re-rolled with any orb. The same happens to unique maps (no phase-2 rows at all) and to socketed **set** quivers (only a brick row, so 75 % dud). | DATA + READ | likely bug |
-| 3 | BLOCK rows 2064/2067 ("6 perfect skulls + rare map") need **6** skulls, but the live re-roll (row 2068) takes **3**. So rare maps (T1–T4) *can* be re-rolled with 3 perfect skulls to level `0.4·clvl + 0.4·ilvl`. The SoJ rows 2069/2070 (high-level re-roll, +1 socket on a map) are not blocked either. | DATA + READ | likely bug |
-| 4 | Map "3 → 1" for T1: rows 2261/2263 take `t1me` of **any quality** and come before rows 2270/2271, so 3 magic or 3 rare T1 maps give a *white* T1. The magic/rare rows are unreachable (T2/T3 rows are `nor` only and work). | DATA + READ | likely bug |
-| 5 | A brick is not a loss. The item is re-created as a new rare of the same base, level and ethereal state, and then gets a corruption outcome from the rows **above** the brick threshold (roll = V + rand()%(1000−V)). So a bricked bow has 33.6 % sockets (10.1 % three … 6.0 % six). | **VERIFIED** (engine) + READ | intended but surprising |
-| 6 | Pre-corrupted items (`map_glob_dropcorrupted`, quest ring, 0x102C2DC0) use the same engine. They never brick and are biased the same way. | READ | intended but surprising |
-| 7 | Row descriptions disagree with the thresholds: white "destroyed (25 %)" and "+sockets (25 %)" are **50 %/50 %**; bow "+6 sockets (5.5 %)" is **4.5 %**; rune-upgrade rows name gems that the inputs do not require; row 361 "warlord of blood" makes Hellcaves. | DATA | intended but surprising (cosmetic) |
-| 8 | Engine flag 1 (desecrate): the "already has this outcome" test compares a **property id** (e.g. 270) with the stat-360 outcome code. It can never be true, and its re-roll restarts at a hard-coded record index **351**, which the MPQ rows have since moved past. | **VERIFIED** (the code path, not the intent) | likely bug (dead code, harmless) |
-| 9 | Stat 361 `corruptor` is compiled with Save Bits = 1, so 1001/3001 save as 1 and a leftover X saves as X & 1. An even leftover would read as untouched after a reload. | DATA (bin) | unclear (not run; depends on the realm's saver) |
-| 10 | The throwing-weapon corruption block (rows 466–499) is disabled, so javelins, throwing knives and axes use the generic weapon rows, including +2/3/4 sockets. | DATA | unclear |
-| 11 | The stock output mod chance succeeds with probability (c+1)/100, not c/100 (`seed % 100 > c` skips). No live row uses a partial chance. | READ | intended but surprising (stock) |
-| 12 | "Low quality → normal" (rows 264/265) has no level fields, so the new normal item is **ilvl 1**, which caps later sockets to MaxSock1. | READ + DATA | intended but surprising |
-| 13 | PD's own matcher 0x102BB3F0 (used by the engine) ignores `bas/exc/eli` and named-unique flags. With the live rows this changes nothing. | READ | unclear |
-| 14 | `useitem ilvl=100` on corruption and socket rows does nothing: `useitem` keeps the item's own level. | READ | intended but surprising (cosmetic) |
-| 15 | Helm crafts (version 200) refuse circlets: PD 0x102BB9C0 checks `ci0`–`ci3`. | READ | intended |
-| 16 | The Lilith's Mirror, organ and Key rows put a `useitem` in output A/B. By the stock rule an output refers to the input with the same index, so these keep the Key / the organ / the mirror. Not traced. | READ (rule) | unclear |
-
-**Left unverified:**
 - The phase-1 corruptor roll and the `sock min..max` rolls are stock property rolls on the item seed, assumed uniform. They were not run.
 - The stock input test 0x6FC90240, the output code 0x6FC92220, the level formula and the refusal rules in PD 0x102BCC00 are READ only. Only the engine (0x102BB5F0) and the crafted roller (0x6FC34BF0) were run.
 - Stack-quantity use by PD 0x102BBFF0, and whether a Key or other `useitem` catalyst is used up.

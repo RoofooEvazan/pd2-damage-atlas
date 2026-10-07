@@ -57,7 +57,7 @@ phys = trunc(phys * mult / 100)               // physical damage only, before re
   - It **omits Sword/Mace/Spear Mastery crit** (the server counts them).
   - It counts Throwing Mastery for melee.
   - Its mastery check is BH's own, not 0x102D30B0.
-  - Our `panel()` copies BH on purpose. The combat model now uses the server formula instead (see §4).
+  - Our `panel()` copies BH on purpose. The combat model now uses the server formula instead (see §3).
 
 ## 2. Crushing blow (Q2)
 
@@ -91,23 +91,19 @@ cb  = life_current(<<8) × eff / div                     // double
 if stat36 ≥ 100: nothing                               // pierce 425 ignored
 life = trunc(life − (cb − trunc(trunc(cb)·stat36/100)))  // raw stat 36: negative values NOT halved, no −100 floor
 ```
-Every item on the Q2 bug checklist was checked, and none holds:
-- **Efficiency as a flat value?** No. It is a percent that multiplies the share linearly (+25 → ×1.25). Two-Hand Mastery caps its own part at 25; the stat itself has no cap.
-- **Applied twice?** No. It is read once, per proc.
-- **Applied after resist?** No. It is applied before resist, and resist then cuts `trunc(cb)`.
-- **Applied to the whole life?** No. It scales the share of *current* life.
-- **Integer shift or division error?** No. Life is in <<8 units on both sides and the division by 100 is there.
-- **Two-hander bonus, or a Whirlwind or PD hook that doubles CB?** No. The only other PD patches in the execute path (0x6FCFE233/288/2AF) do not fire events.
+- **Efficiency** is a percent that multiplies the share linearly (+25 → ×1.25). Two-Hand Mastery caps its own part at 25; the stat itself has no cap. It is read once, per proc.
+- **Order:** it is applied before resist, and resist then cuts `trunc(cb)`. It scales the share of *current* life.
+- **Units:** life is in <<8 units on both sides, and the division by 100 is there.
+- **Other hooks:** the only other PD patches in the execute path (0x6FCFE233/288/2AF) do not fire events.
 - **Hit-roll gate:** a proc needs the hit flag (damage+0 bit 0x20). WW's hit roll is PD 0x10270EB0 (via 0x6FC48D76 → 0x102EEDA0).
 - **Timing:** CB is applied before the hit's own damage, which is then clamped to the remaining life.
 
-**Quirks, not bugs:**
+**Further rules:**
 1. **CB reads raw stat 36.**
    - Negative physical resist counts in full for CB, while normal damage counts it half (PD 0x1026EA70).
    - Amplify Damage 20 (−30) makes CB ×1.30 but physical damage only ×1.15.
    - There is no −100 floor for CB.
-2. **Efficiency ≤ −100** would divide by zero, or give a negative CB that *adds* life, since there is no clamp to max life. No PD2 item has negative 268 (DATA), so this is theoretical.
-3. **Player count** raises the divisor for normal monsters: 1/8 in single player, 1/17.8 at /players 8.
+2. **Player count** raises the divisor for normal monsters: 1/8 in single player, 1/17.8 at /players 8.
 
 ### Two-Hand Mastery (DATA + READ)
 | stat | calc | lvl 1 / 10 / 16 / 20 / 30 |
@@ -151,16 +147,9 @@ Barbarian level 90, Two-Hand Mastery 20, Whirlwind 20, two-handed sword (Colossu
   - The amount falls as the monster's life falls, so CB's share of the kill is largest on high-life targets.
 - **Crit/DS** (gear only, e.g. 0 crit and 30% DS) multiplies only the weapon roll: ×(1 + 0.30·0.5) = ×1.15.
   - With Sword Mastery 20 as well (29% crit on the 2H sword) and 30% DS: ×1.3965.
-- **Why it feels stronger than the sheet:** the sheet shows the weapon roll with the +330% mastery damage. It does not show CB, which is a share of the monster's life. Against map monsters with tens of thousands of life, CB alone removes about 10%/s of the remaining life. This is working as coded, not an efficiency bug.
+- **Why it feels stronger than the sheet:** the sheet shows the weapon roll with the +330% mastery damage. It does not show CB, which is a share of the monster's life. Against map monsters with tens of thousands of life, CB alone removes about 10%/s of the remaining life.
 
-## 3. PD2 code bugs found
-None in the efficiency math or the CB chance. The observations to report are all by design or theoretical:
-- CB ignores the "negative resist counts half" rule (quirk 1).
-- There is no guard for efficiency ≤ −100 (quirk 2).
-- The ownerless-missile DS always applies ×1.5 with no roll.
-- The BH in-game panel under-reports crit for Sword/Mace/Spear Mastery users, and shows Throwing Mastery crit for melee.
-
-## 4. Bugs in our page model, fixed
+## 3. Fixes to our page model
 1. **`engine.js`: masteries on `type2` never matched.** The weapon type test used only Weapons.txt `type`.
    - Every `2han` (Two-Hand Mastery) and `1han` (One-Hand Mastery) passive showed "weapon mismatch".
    - The character-screen AR and damage therefore **left out Two-Hand Mastery** (−220% AR, −330% damage at level 20) and One-Hand Mastery.

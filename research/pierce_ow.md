@@ -20,7 +20,6 @@ Table of pierce counts by chance: `adv/re/pierce_table.json`, written by the dri
 - **Open wounds:** each target carries **one** open-wounds state, owned by whoever created it.
   - The owner's next two procs add their damage (3 stacks).
   - Later procs from the owner only reset the 5-second duration.
-  - A proc from anyone else adds **no** damage. It resets the duration and **sets the stack counter back to 1**, so the owner can then add two more procs. With two attackers the drain has no upper limit.
 
 ## 1. Projectile pierce
 
@@ -99,7 +98,7 @@ if (owner && (Missiles.txt flags & 4) && (T(owner,156,0) != 0 || T(owner,166,0) 
 | Pierce level 20 + Razortail (33) | 91 | 5 |
 | Pierce level 20 + Kuko Shakaku (50) | 108 | 10 |
 | Warshrike (50) alone | 50 | 0 |
-| Warshrike (50) + Throwing Mastery level 20 (41, holding a throwing weapon) | 91 | 5 on the server; the client predicts 0 (see bug 3) |
+| Warshrike (50) + Throwing Mastery level 20 (41, holding a throwing weapon) | 91 | 5 on the server; the client predicts 0 |
 | Lightning Fury with 95+ | 95+ | 6 |
 | Skeleton Archer (merc or summon, skill_pierce 100) | 100 | 10, whatever the seed |
 
@@ -169,11 +168,8 @@ What this means (every point VERIFIED natively):
 2. **Per attacker or shared:** each target has only one OW state.
    - `0x102BFE20` finds any existing state 62 regardless of owner and refreshes it. It never creates a second one.
    - The owner-matched search `0x10269230` only decides whether the proc counts as "mine".
-3. **A second player's proc:** it adds none of their damage. It resets the owner's state to 125 frames and **sets the stack counter to 1**.
-   - The owner's next two procs then add their full damage again.
-   - The damage-meter credit (see 5) goes to the second player anyway.
-4. **Expiry:** 125 frames after the last proc from anyone. The drain then drops to 0, and the next proc starts over at 1 stack. (The timer model is READ: removal happens when the last scheduled expiry frame is reached.)
-5. **Damage meter** (VERIFIED value; its meaning is unclear): if the attacker is a player, PD adds `min(credit, target life)` to `pPlayerData+0x1A8` and stores the frame at `+0x265`.
+3. **Expiry:** 125 frames after the last proc. The drain then drops to 0, and the next proc starts over at 1 stack. (The timer model is READ: removal happens when the last scheduled expiry frame is reached.)
+4. **Damage meter** (VERIFIED value; its meaning is unclear): if the attacker is a player, PD adds `min(credit, target life)` to `pPlayerData+0x1A8` and stores the frame at `+0x265`.
    - The credit is `trunc(dmg·5/256)` per proc. At 3 stacks it is `trunc(dmg·(125 − remaining)/125/100)`.
    - Either way, it is about 1/25 of what the proc actually drains.
 
@@ -185,12 +181,6 @@ What this means (every point VERIFIED natively):
 | 10 | A | 7432 | 2 | 726 |
 | 20 | A | 11148 | 3 | 1089 |
 | 30 | A | 11148 | 3 | 1089 (refresh only) |
-| 40 | B | 11148 | **1** | 1089 (B adds nothing) |
-| 50 | A | 14864 | 2 | 1452 |
-| 60 | A | 18580 | 3 | 1815 |
-| 80 | B | 18580 | 1 | 1815 |
-| 90 | A | 22296 | 2 | 2178 |
-| 300 | A | 3716 | 1 | 363 (expired at 215, new state) |
 
 `damage.js openWoundsTarget()` reproduces this table.
 
@@ -219,7 +209,7 @@ What this means (every point VERIFIED natively):
 | vs players / others | player target ÷4, and ÷2 more from a missile hit (event 6); monster target ÷2 when D2Game `0x6FC42A80(target, 12)` | ÷4 for a player-owned monster; separate PvP formula |
 | duration | 200 frames | 125 frames |
 | stacking | none (a re-proc refreshes; value kept) | 3 stacks per owner as above |
-| Rathma/clone share | – | halved drain also applied to the partner (bug_rathma_share.md) |
+| Rathma/clone share | – | halved drain also applied to the partner |
 
 ## 3. Verification
 
@@ -245,27 +235,3 @@ What this means (every point VERIFIED natively):
   - The monster regen tick `0x6FC96740`.
   - The PvP OW branch.
   - The client-side copies.
-
-## 4. Bugs and quirks
-
-1. **Player pierce is deterministic with fixed thresholds (67 / 87 / 95%).**
-   - Below 67% a player never pierces. Pierce skill level 26 (66%) does nothing on its own, and so does any single +50% item.
-   - 67–86% always gives exactly 1 pierce, and 87–94% always gives 5.
-   - This comes from the seed being the player's unused stat 328 (always 0).
-   - Verdict: **likely bug** (the stock design, made more visible by PD's cap of 10 and different rand).
-2. **Open wounds from a second attacker resets the owner's stack counter.** This lets the owner stack past 3 without limit: the drain grows by d on every owner proc after each foreign proc. The second attacker's own damage is thrown away.
-   - Verdict: **likely bug**.
-3. **Throwing Mastery pierce is missing from the client-side roll** (`0x102CBA10` has no `0x102D30B0` call). With Throwing Mastery the server and the client can disagree on how many targets a throwing weapon passes through, so the displayed missile can vanish or keep flying wrongly.
-   - Verdict: **likely bug**.
-4. **The pierce chance is compared unsigned.** A negative total pierce gives the maximum 10 pierces.
-   - Verdict: **unclear** (no negative pierce source was found).
-5. **The pierce count is fixed at creation, but each hit re-checks that the owner still has pierce stats.** Swapping weapons, or the owner dying, stops missiles already in flight.
-   - Verdict: **intended but surprising**.
-6. **Multiple Shot:** the unit where the arrow stops takes the same % as the previous one (100, 80, 80 for 2 pierces), because 469 only rises on a successful pierce.
-   - Verdict: **intended but surprising**.
-7. **Open wounds at 3 stacks only refreshes.** Drain = the first three procs' values, even if later procs would be stronger (for example after a level-up or when Deep Wounds turns on).
-   - Verdict: **intended but surprising**.
-8. **The open-wounds damage-meter credit is about 1/25 of the real drain** (`dmg·5/256` per proc, `dmg·elapsed/125/100` at 3 stacks). The credit goes to whoever procced, even when their damage was discarded.
-   - Verdict: **unclear** (the meter's purpose is not traced).
-9. **Kill credit for an open-wounds death always goes to the first attacker** (the list owner), even if another player's procs kept the state alive.
-   - Verdict: **intended but surprising**.

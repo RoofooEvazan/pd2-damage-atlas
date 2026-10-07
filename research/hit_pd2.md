@@ -298,7 +298,7 @@ It runs only if:
 - the damage record has the hit flag set and none of 0x8380
 
 What it does: `base31 = max(0, total31 + stat120)`. It reads through #10973 (full stats) and writes through #10887 (base).
-- **Quirk**: flat stat-31 changes active at that moment are baked into the base again on every hit (Attract, Inner Sight: full' = 2·full − base + v).
+- Flat stat-31 changes active at that moment are baked into the base again on every hit (Attract, Inner Sight: full' = 2·full − base + v).
 - PD2 patch records inside 0x6FCFD450 only replace the crit/deadly-strike block (0x6FCFD52C–0x6FCFD5B4) and the call at 0x6FCFD746.
 
 ### 7.6 Special attacks (unchanged, READ)

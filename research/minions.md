@@ -75,10 +75,10 @@ function through its lazy import (0x1027E060 → table 0x103D2D04[0] = rva 0x4F9
 ### 1d. Shadow Warrior / Shadow Master / Dopplezon — D2Game 0x6FCB1660 (VERIFIED, 6,000 cases, 0 mismatches)
 - **lvl ≤ 1: returns immediately** (no bonus life, no stats at all).
 - life += life·(lvl−1)·par1/100.
-- Stock 1.13c bug, confirmed natively: **every aurastat gets the value of `aurastatcalc2`, every passivestat gets
+- Stock 1.13c, confirmed natively: **every aurastat gets the value of `aurastatcalc2`, every passivestat gets
   `passivecalc2`**, evaluated with the **pet** as calc unit. Consequences in PD2's data:
-  - Shadow Warrior: tohit, skill_armor_percent, strength, dexterity are all `lvl·par3` = 12·lvl (intended tohit 40·lvl, str/dex 10·lvl).
-  - Shadow Master: tohit, strength, dexterity all `lvl·10` (intended tohit 40·lvl).
+  - Shadow Warrior: tohit, skill_armor_percent, strength, dexterity are all `lvl·par3` = 12·lvl.
+  - Shadow Master: tohit, strength, dexterity all `lvl·10`.
   - Dopplezon: its passive `tohit = edln` reads the empty passivecalc2 ⇒ **0**; its four resists are unaffected (same formula).
 - Level = owner level, defense/AR = MonStats raw; MonEquip gear (random magic/rare by level) is not modelled.
 - Where shadows get their assassin skill levels from: **OPEN** (not in this function or 0x6FCB5980).
@@ -107,7 +107,7 @@ function through its lazy import (0x1027E060 → table 0x103D2D04[0] = rva 0x4F9
 | Raven | clvl + par1 + lvl | MonStats AC + MonLvl | MonStats | cold damage aura; SkillDamage Raven |
 | Poppy / Vines / CoL | 3·clvl/4 + lvl | MonStats raw | ×(1+calc1%) | poison resist aura on the poppy (negative) |
 | Spirits, Wolves, Fenris, Grizzly | clvl | MonStats AC + MonLvl | ×(1+calc1%) | resists min(ln78,80); armor%, tohit, dmg%; SkillDamage |
-| Shadow W./M., Dopplezon | clvl | MonStats raw | ×(1+(lvl−1)·par1%) | §1d (calc2 bug), pet calc unit |
+| Shadow W./M., Dopplezon | clvl | MonStats raw | ×(1+(lvl−1)·par1%) | §1d (calc2 for all), pet calc unit |
 | Sentries, Blade Sentinel | 1b formula | MonStats AC + MonLvl | MonStats (100) | damage = their sumskills at `lvl` and synergies |
 | Hydra, Lesser Hydra | spawn | – | – | damage = HydraFireball/HydraMissile at `lvl` |
 | Revive | min(mlvl, clvl) | spawn defense | §1e | aura dmg%, masteries, allskills |
@@ -123,7 +123,7 @@ function through its lazy import (0x1027E060 → table 0x103D2D04[0] = rva 0x4F9
 - Timers: Valkyrie 0x6FC6D879, pet spawn 0x6FCC37B7, revive 0x6FC70AD1. Hooks in the setter's op branch (0x6FC6FA54 →
   PD 0x102ED020) and sumskill start (0x6FC6FE8F → PD 0x102C8190) do not change values.
 - PD2-only do-funcs (Desecrate 161, Uber summons 177/179) have no entry in the stock table; not traced (OPEN).
-- Everything else (level rule, MonLvl add, setter, do-49 bug, SkillDamage, spawn) is stock 1.13c.
+- Everything else (level rule, MonLvl add, setter, do-49 calc2 rule, SkillDamage, spawn) is stock 1.13c.
 
 ## 2. Mercenaries
 ### 2a. Which Hireling.txt row (D2Common #11156 = 0x6FDA32C0, VERIFIED inside the merc check)

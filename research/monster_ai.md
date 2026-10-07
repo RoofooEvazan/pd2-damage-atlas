@@ -1,8 +1,7 @@
 # Monster AI in PD2: targeting, decisions, PD2 changes
 
 PD2 = Diablo II 1.13c `D2Game.dll` + `ProjectDiablo.dll` (PD). This covers how a monster picks its target, how it
-chooses between attacks and skills, what PD2 changes, which champion/unique mods touch the AI, and the quirks that
-matter to players.
+chooses between attacks and skills, what PD2 changes, and which champion/unique mods touch the AI.
 
 **Status labels.**
 - **VERIFIED** = the real code was run natively in the harness and matched a model.
@@ -182,7 +181,7 @@ return HIGH, unless there is no HIGH, or the LOW unit is within 5 and the path t
 | **Hydras, all assassin sentries and Blade Sentinel, Vines/Poppies/Cycle of Life, eagle/raven** | 0 (blank) | low |
 
 - A revived monster keeps its own row's threat, usually 10.
-- **Summons with threat 0/1 are never shot while a player, merc or normal summon is within 48.** This is §6 Q4.
+- **Summons with threat 0/1 are never shot while a player, merc or normal summon is within 48.**
 
 ### 2.4 Retargeting and "aggro" (READ)
 - **No memory, no aggro table.** The finder runs again on **every think**. The inputs are position, act, town, LOS,
@@ -195,7 +194,7 @@ return HIGH, unless there is no HIGH, or the LOW unit is within 5 and the path t
 - **Awareness.** Before its first acquisition a monster needs line of sight to a candidate (outdoor and preset
   levels). After that (aiControl flag 8) LOS is never checked by the melee finder, so it keeps finding you through
   walls.
-  - Pack members share a group record (MonsterData+0x50): see §6 Q3.
+  - Pack members share a group record (MonsterData+0x50).
 - **Ranged AIs** always need LOS and range 48 (§2.3), independent of `aidist`.
 
 ### 2.5 Where each target type comes out (summary)
@@ -231,7 +230,7 @@ else  n = distance of the nearest same-act, non-town player (INF if none)
 | 1 | player with GUID | Terror init (flee source) |
 | 2 | monster with GUID | **Attract**: every eligible monster around the victim, and Terror init |
 | 3 | "confused": the finder temporarily flips the monster's alignment and takes the nearest living unit within 35 (search type 5) | **Confuse** (0x6FC70D6D) |
-| 4 | GUID looked up in hash game+0x1920, which is the item hash | Terror init when the source is a missile (type 3). The lookup is in the wrong hash, so it fails and the field is cleared (harmless) |
+| 4 | GUID looked up in hash game+0x1920, which is the item hash | Terror init when the source is a missile (type 3). The lookup fails and the field is cleared |
 
 If the forced unit is gone, dead or invalid, the field is cleared and the normal search runs.
 
@@ -442,7 +441,7 @@ back to the stock AI.
 | 89 Megademon | 0x102B1210 | aip7(H) > 0: Lieutenant of Sin (1350/1350) | Skill2 every aip7(H) AI ticks (stat 446 countdown), Skill3 every aip8(H) ticks (stat 447), otherwise stock |
 | 93 ArcaneTower | 0x102B6640 | 966 Mendeln spire | boss script |
 | 99 TrappedSoul | 0x102B5770 | Dclone souls, 1057 Demonic Sentinel, 922 Shadow of Mendeln | boss scripts |
-| 102 BladeCreeper | 0x102B9820 | the assassin summon | rewritten (hit roll via PD 0x1026F8F0, exploit_checks.md) |
+| 102 BladeCreeper | 0x102B9820 | the assassin summon | rewritten (hit roll via PD 0x1026F8F0) |
 | 105 / 106 ShadowWarrior / ShadowMaster | init 0x102BA3A0 + think 0x102B9D50 / init 0x102BA480 only (think stays stock 0x6FCCB580) | Shadow Warrior (105); Shadow Master, **Decoy, Valkyrie** (106) | PD init (and think for 105); per MonAi.txt (PD's own comments): max target dist, max boss dist, attack chance, skill decrement / approach dist, melee bonus, random pick, ignore range, **boss leash** |
 | 114 ReanimatedHorde | 0x102B7570 | 998 King Leoric (map) | boss script |
 | 115 SiegeBeast | 0x102B9330 | 1000 The Stygian Beast | boss script |
@@ -530,7 +529,7 @@ within 20:
    away and his merc 20 away.
    - It takes the Revive, because 12 < 20 < 30.
    - If the necromancer steps back to 56, the whole list is skipped. With no other player near, the zombie gets no
-     target and idles 25 frames, even though the Revive is still 12 away (§6 Q1).
+     target and idles 25 frames, even though the Revive is still 12 away.
 2. **Ranged choice.** A Horror Archer sees a player at 30, an Oak Sage at 15 and a Hydra at 8, all in LOS.
    - The Hydra has threat 0 and goes in the low bucket. The Oak Sage (threat 8) and the player (14) go in the high
      bucket.
@@ -546,79 +545,7 @@ within 20:
 
 ---
 
-## 6. Quirks, exploits and bugs
-
-**Q1 — Pets are invisible to melee monsters when their owner is 55+ units away.**
-- 0x6FCD1DF7 skips a whole player list when the player is ≥ 55 from the monster. It also skips it when the player is
-  in town or in another act.
-- So a merc, golem or skeleton standing next to a monster is not a melee-finder target unless its owner is within 55
-  of that monster.
-- The PD pet leash (§3.3) usually keeps pets within about 48 of the owner, but a monster can still stand 55+ from a
-  player while adjacent to his pet.
-- Ranged finders are not affected.
-- **Verdict: intended but surprising.** It is stock behaviour; PD did not change the finder.
-
-**Q2 — `aidist` above 55 does nothing against players.**
-- The `>= 55` test comes first, so aidist 60, 128, 190 or 250 (bats, Dclone, Rathma, the Ancients, trapped souls, PD
-  map bosses) all behave like 55 for players and pets.
-- **Verdict: unclear.** PD2 probably expected 128 to mean "aggro the whole arena".
-
-**Q3 — The pack alert flag flips instead of latching.**
-- After an acquisition, the group record is set to `group+0x24 = (old flag == 0)`.
-- A member that acquired *because* the flag was set clears it again. The next unaware member then needs LOS again.
-- **Verdict: likely bug** (stock), mild effect: every other pack member waits for LOS.
-
-**Q4 — Low-threat summons are almost never shot by ranged monsters.**
-- Hydras, sentries, Blade Sentinel, Vines/Poppy/Cycle of Life and ravens have threat 0. Bone walls have 1.
-- Shooters and casters ignore them while any player or threat ≥ 2 unit is within 48 in LOS.
-- Melee-finder monsters still hit them when they are nearest.
-- **Verdict: intended** (threat design); useful for players.
-
-**Q5 — Damage does not draw aggro, so out-of-range sniping works.**
-- Melee-finder monsters only look at who is nearest within aidist (35) and < 55.
-- A monster shot from 36–55 units, or from outside LOS before it is aware, idles (10–25 frames per think) or wanders.
-- **Verdict: intended engine limitation.**
-
-**Q6 — Monsters that cannot be taunted or terrored.**
-- `switchai` = 0, `boss`, unique/superunique, and possessed monsters take no Taunt, Terror, Dim Vision, Confuse or
-  Attract. The curse is not applied at all, including its stat part.
-- In PD2 this includes **every Oblivion/Void Knight** and the **Minions of Destruction**.
-- **Verdict: intended but surprising** for Taunt builds.
-
-**Q7 — Taunt turns ranged monsters into melee monsters.**
-- The taunt think walks to the caster and uses the attack mode (0x6FD12220 mode 4). Skills are not used, and an
-  adjacent enemy on the way is hit first.
-- **Verdict: intended.**
-
-**Q8 — The PD Oblivion Knight "curse timer" (aip3 = 200) is dead data.**
-- PD's AI writes the timer and never reads it.
-- Recasting is limited only by "the target has none of Amp, Weaken, Lower Res or Decrepify".
-- On a target cursed with anything else (e.g. Iron Maiden, Life Tap), an OK within 8 recasts at 50 % per think.
-- **Verdict: intended but surprising** (design change), low impact.
-
-**Q9 — PD keeps AI scratch across state changes.**
-- The stock zeroing of aiControl+0x14/+0x18/+0x1C on an AI state change is NOPed.
-- A monster taunted a second time may start with the Taunt "engaged" flag (+0x14) still set, so it can skip the
-  initial approach step.
-- Stock AIs that use these words resume with old values after a Taunt or Terror ends.
-- **Verdict: unclear.** It is needed by PD's boss scripts; the side effects are minor.
-
-**Q10 — The PD scripts read the Hell aip columns in every difficulty.**
-- The Megademon, ZakarumPriest, WillOWisp, Fallen and Brute branches use `aip7(H)`/`aip8(H)` and `aidel(H)`
-  regardless of difficulty.
-- **Verdict: intended** (these monsters are Hell-only maps, ubers or events).
-
-**Q11 — The teleport mod's "heal" is only monster-level life, 25 % of the time, below 30 %.**
-- **Verdict: intended but surprising.** Players often assume a large regen.
-
-**Q12 — Maze-level rooms need no LOS for the first acquisition** (#10685 room type 1).
-- In random dungeon levels, unaware melee monsters target you through walls from the start. Outdoors and in preset
-  areas they need LOS until they have acquired someone once.
-- **Verdict: intended but surprising.**
-
----
-
-## 7. Verification record and gaps
+## 6. Verification record and gaps
 
 **VERIFIED** (`harness/aipick`, 50,000 random cases, 0 mismatches, RNG state compared too):
 - 0x6FCD08F0 distance

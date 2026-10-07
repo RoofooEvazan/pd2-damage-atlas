@@ -422,27 +422,7 @@ rule, +skills rule and synergy rule are stock (no PD patch in `0x6FDA05C0`, `0x6
 
 ---
 
-## 6. Bugs and quirks
-
-| # | finding | verdict |
-|---|---|---|
-| 1 | "Chance to cast on attack" never fires on a missed or blocked melee swing; the tooltip suggests it does. Ranged attacks never fire it (event 8 is never raised) | intended but surprising (stock behaviour; corrects `dmg_B_pipeline.md`) |
-| 2 | Stats 203 on-crit and 205 on-pierce have strings but their events are never raised | likely bug / unused (no item has them) |
-| 3 | PD's on-cast set B lists 313 "Sentry Chain Lightning" and 392 "Sentry Lightning" (the sentries' own attack skills). It does not list the player traps 271 Chain Lightning Sentry and 366 Lightning Sentry, which use anim S2. So these two traps don't trigger on-cast items; all other traps do | likely bug |
-| 4 | When struck, on kill, on death, on level-up and on block procs are silently refused while that skill's cooldown slot is busy. For non-class skills that slot is shared with every charge or oskill cooldown | intended but surprising |
-| 5 | All non-class skills share one cooldown slot. Using one cooldown charge (e.g. Bone Prison, 5 s) locks every other non-class cooldown skill and flag-0 proc | intended but surprising |
-| 6 | No cooldowns in town (except shapeshifts); on-cast and on-block procs are also disabled in town | intended |
-| 7 | 483 `dragonflightreduction` has a tooltip ("Reduced By 0.5 Seconds") but nothing reads it | likely bug (unused stat) |
-| 8 | Joust reductions are subtracted after the 38-frame floor and can bring the cooldown to 0 | intended but surprising |
-| 9 | "When struck" never fires from spell missiles (fire bolts, lightning, etc.) because damagedbymissile needs weapon-damage flag 0x20. It also never fires while the wearer has state 54 | intended but surprising (stock rule) |
-| 10 | Charge regeneration refills only the **first** charged skill on an item | unclear (all current 422 items have one charged skill) |
-| 11 | Weapon-type proc skills (Multiple Shot on Demon Machine; Lightning Bolt, Lightning Fury, Poison Javelin on Crackleshot) can re-trigger on-striking procs with their own hits | unclear |
-| 12 | The x/y proc cast `0x6FD11730` still refuses when the caster has state 54, while PD removed that check from the target version | unclear |
-| 13 | Merc and monster `delay` values (e.g. A3 Merc Meteor 16) are ignored by the player cooldown code | unclear (monster AI not traced) |
-
----
-
-## 7. What was not verified
+## 6. What was not verified
 - **The miss path's +0 = 0.** The zeroed struct was READ in the attack routines. Mode 11 verifies the consequence given that value.
 - **Event raise sites.**
   - The Missiles `GetHit` / SrcDamage conditions.

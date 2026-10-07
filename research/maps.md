@@ -12,7 +12,7 @@ Files:
 - `harness/mapapply.c`: native run of the map-mod applier.
 - `harness/mapaffix.c`: native run of the rare-count and magic-force hooks.
 
-Related notes reused, not redone: `drops.md` (map drops, `map_glob_drop*`, map TCs), `dmg_D_incoming.md` §5 (map/zone damage mods), `bug_boss_instadeath.md` (maxhp% life overflow), `uber_review.md` (uber bosses, `uber_difficulty`).
+Related notes reused, not redone: `drops.md` (map drops, `map_glob_drop*`, map TCs), `dmg_D_incoming.md` §5 (map/zone damage mods), `uber_review.md` (uber bosses, `uber_difficulty`).
 
 > **Data source warning (important).** The tables in `data.zip` (used by `tools/ias_sources.T()` and `excel_live/`) are **not** the live data for these tables:
 > - `Misc.txt`, `Levels.txt` and `CubeMain.txt` differ from the ones inside `bin/pd2data.mpq`, which ships next to the live DLLs.
@@ -311,10 +311,10 @@ Handler abbreviations:
 | map_mon_fasterattackrate/castrate 392/393 | Fast/Speedy/Ludicrous | monster 93/105 | | A | |
 | map_mon_tohit 394 + map_mon_pierce 406 | Silver/Shining/Opulent (same value) | monster 119 + 156 | +AR%, pierce chance | A | map_mon_att 277 also → 119 (SetStat overwrite if both) |
 | map_mon_ac% 395 | Sturdiness… | monster 16 | +defense% | A | |
-| map_mon_absorb*_percent 396–399 | of Crimson / Tangerine / Opal / Azure | monster 148 / 146 / 144 / 142 | **cold / magic / light / fire** absorb | A | the affix name colour does not match the element (Crimson = cold absorb); the tooltip is correct |
+| map_mon_absorb*_percent 396–399 | of Crimson / Tangerine / Opal / Azure | monster 148 / 146 / 144 / 142 | **cold / magic / light / fire** absorb | A | |
 | map_mon_normal_damage_reduction 400 | Protection… | monster 34 | flat physical DR | A | |
 | map_mon_velocitypercent 401 | Swiftness… | monster 67 | +FRW | A | |
-| map_mon_hpregen 402 | Regeneration… | monster 74 | life regen (<<8 units) | A | can trigger the pinned-life death, `bug_boss_instadeath.md` |
+| map_mon_hpregen 402 | Regeneration… | monster 74 | life regen (<<8 units) | A | |
 | map_mon_lifedrainmindam 403 | Leech… (+405 same value) | monster 60 | flat "life drain" per hit | A | also gives +max life |
 | map_mon_fastergethitrate 404 | Resilience… | monster 99 | +FHR | A | |
 | map_mon_maxhp_percent 405 | Large/Huge/Colossal, of Health…, Leech… | monster **stat 7 directly** | life += life/100·v, clamp 0x7FFFFFFF | A | writes marker stat 432 = 1; see §2.5 |
@@ -322,11 +322,11 @@ Handler abbreviations:
 | map_mon_curse_resistance 409 | Warding… | monster 109 | curse duration reduction | A | |
 | map_mon_passive_*_pierce 414–417 | (no affix; `pierce-all` property) | monster 333–336 | −player resist | A | |
 | map_mon_ed% 426 | Strong… | monster 25 | +% physical damage | A | |
-| map_mon_splash 427 | Splashing (skill 358 proc_SplashDamage, 100 %/lvl 1; magic 150 %/lvl 2) | monster 359 (skill-event, layer = skill<<6 \| level) | melee splash | A | **layer often lost**, §2.5 |
-| map_mon_phys_as_extra_{ltng,cold,fire,pois,mag} 432–436 | Sparking…Plagued, Runic… | monster 50/51, 54/55/56, 48/49, 57/58/59, 52/53 | v % of stats 21/22 | A | **stats 21/22 are 0 at spawn → +1 min damage** (§2.5) |
+| map_mon_splash 427 | Splashing (skill 358 proc_SplashDamage, 100 %/lvl 1; magic 150 %/lvl 2) | monster 359 (skill-event, layer = skill<<6 \| level) | melee splash | A | §2.5 |
+| map_mon_phys_as_extra_{ltng,cold,fire,pois,mag} 432–436 | Sparking…Plagued, Runic… | monster 50/51, 54/55/56, 48/49, 57/58/59, 52/53 | v % of stats 21/22 | A | §2.5 |
 | map_mon_deadlystrike 449 | corruption | monster 141 | PD crit/DS | A | |
 | map_mon_cannotbefrozen 450 | corruption `nofreeze-hp%`, Fallen Gardens | monster 153 | | A | |
-| map_mon_skillondeath 453 | (no source) | monster 197 | skill-event | A | same layer issue |
+| map_mon_skillondeath 453 | (no source) | monster 197 | skill-event | A | |
 | map_mon_drop{jewelry,weapons,armor,crafting,charms,jewels} 494–497/502/506 | of the Jeweler (unspawnable), Smith, Armorer, Crafter; unique maps | monster (same id) | extra TC roll `pdRand%100 < v` | A + D | `drops.md` |
 | map_defense 369 | (Divide 1024) | monster 369 | none found ("Corrupt" string) | A | |
 | map_glob_density 372 | most affixes | key 0 | MonDen × (1+v/100) | Z | |
@@ -339,7 +339,7 @@ Handler abbreviations:
 | map_glob_boss_dropskillers 186 | Zhar | key 7 | "boss drops a skill charm" | **none** | no reader |
 | map_glob_boss_dropcorruptedunique 187 | Warlord | key 8 | | **none** | no reader |
 | map_glob_boss_dropubermats 211 / droppuzzlebox 212 / dropfacet 505 | Void / Imperial / Fallen Gardens | key 9 (all three) | | **none** | no reader; three stats share one key |
-| map_glob_sundermonsters 508 | (no affix source) | key 10 | sunder | A | **no effect from a map item**, §2.5 |
+| map_glob_sundermonsters 508 | (no affix source) | key 10 | sunder | A | §2.5 |
 | map_glob_dropsocketed 272 | Ureh | key 11 | sockets on drops | D 0x102C8D3C | |
 | map_glob_dropbonus 273 | Djinn | key 12 | extra full drop `pdRand%100 < v` | Z → monster 273 | |
 | map_glob_dropethereal 274 | Na-Krul | key 13 | forced ethereal `rand()%100 < v` | D 0x102C8BE1 | |
@@ -370,35 +370,11 @@ for i, (param, stat, v) in monster list:
   if S.count > i: S.entry[i].layer = param     # <-- the layer is written to index i of the SORTED list
 ```
 
-**Quirk 1: layer written to the wrong entry.** The stat list is kept sorted by `stat<<16|layer`. The builder's list is ordered by the *source* stat id. So entry `i` is often another stat. Consequences:
-- The splash stat 359 (layer 22913 = skill 358 level 1) keeps layer 0 and so no longer names the splash skill.
-- The layer is written onto another stat. If that stat is a real one (not the 432 marker), `GetUnitStat(stat, 0)` no longer finds it.
-- A later entry with param 0 can also clear a correct layer when the insertion shifts the splash entry onto its index.
-- Model runs on real rolls, 20,000 maps each, with `harness/mapapply.c` equivalence:
-
-| Map rolls | Splash layer lost |
-|---|---|
-| rare T1 (Kurast) | 36 % |
-| rare T3 (Fortress) | 37 % |
-| rare T4 (Torment) | 71 % |
-| magic | 8–9 % |
-
-- The common trigger is a `+% life` mod. Its 432 marker sorts after 359 and sits at splash's index.
-
-**Quirk 2: physical-as-extra.** Monster stats 21/22 are written only by the attack-time routine 0x6FC97240 (`dmg_D_incoming.md` §5.2). At spawn they are 0, so:
-- The minimum becomes **1** (0 → 1).
-- The maximum 0 is never set.
-- Each hit gets **+1 point** of lightning/cold/fire/magic, or 1/256 poison per frame. It does not get the advertised 60–150 % of physical.
-- Verified: the harness includes spawn-time 21/22 = 0 cases.
-
-**Quirk 3: +% monster life** goes straight into stat 7. See `bug_boss_instadeath.md` for the overflow consequences.
-
 **Other branches** (READ, not run):
 - PvP levels 157/159/166 set 443/481 = −4, 491 = 1, and 482 or 492 = 25.
 - **Sunder (key 10).** It applies only when the key entry's *value* equals the level id and its *layer* is nonzero.
   - Those entries are written by PD's random-zone code 0x102C2469 as {layer 10, key 10, value = levelId}.
-  - A map item's `map_glob_sundermonsters` becomes {layer 0, key 10, value 1}, so it never applies.
-  - Within the random-zone path, the resist cascade quirk from `dmg_D_incoming.md` (`cmovle` re-uses the previous element's value) is confirmed.
+  - A map item's `map_glob_sundermonsters` becomes {layer 0, key 10, value 1}.
 
 ---------------------------------------------------------------------------------------------------------------------
 
@@ -422,8 +398,6 @@ Fortify (key 4) also appends these to every map monster's list (with `apply`):
 - +40 % fire/light/cold/poison mastery (329–332)
 - +20 % magic mastery (357)
 - 493 = v
-
-`fortDesc` promises "+20 % damage" and says nothing about fewer packs.
 
 **Item stats are summed before routing.** All density rolls on a map add into one `map_glob_density` value, so density is `MonDen·(1+Σ/100)`.
 
@@ -535,28 +509,8 @@ Map bosses are presets in the level files. PD's preset spawner 0x102DE248 spawns
 
 ---------------------------------------------------------------------------------------------------------------------
 
-## 6. Bugs and quirks
+## 6. Unverified or open
 
-| # | Finding | Status | Verdict |
-|---|---|---|---|
-| 1 | Applier writes a stat's layer to index *i* of the sorted list. Splash loses its skill layer on 36–37 % of rare T1–T3 maps with splash, 71 % on T4, 8–9 % on magic. The layer can hide another stat. | VERIFIED | likely bug |
-| 2 | Physical-as-extra mods read monster stats 21/22 at spawn (0), giving +1 elemental damage instead of 60–150 % of physical | VERIFIED (applier) / READ (21/22 = 0 at spawn) | likely bug |
-| 3 | ItemTypes chain t3m → t2m → t1m lets T2/T3 maps roll lower-tier affix rows in equal weight (only about 1/3 of a T3 rare's affixes are t3-grade) | DATA + READ | likely bug (the rows are written for exclusive tiers) |
-| 4 | Prefix and suffix `group` ids collide (157, 158, 164, 165, 166), so e.g. Splashing excludes of Sturdiness | DATA + READ | likely bug |
-| 5 | Unique-map boss-drop mods (skill charm, corrupted unique, uber mats, puzzle box, facet, treasure explosion; keys 7/8/9/15) have no reader; 211/212/505 even share key 9 | READ | likely bug (or server-side only) |
-| 6 | `map_glob_sundermonsters` from an item can never pass the applier's test | READ | unclear (no affix rolls it) |
-| 7 | Fortify halves champion/unique packs too, and gives +40 % damage, not +20 % | READ | intended but surprising |
-| 8 | Affix names vs effect: of Crimson = cold absorb, Tangerine = magic, Opal = lightning, Azure = fire | DATA | likely bug (cosmetic) |
-| 9 | Fallen Gardens `map-mon-splash` has no param (skill 0, 1 %, level 1); Imperial Palace/Djinn `play-ac%` −40..−50 always rolls −40 (min > max) | DATA | likely bug |
-| 10 | Boss TC tier lags the map tier: TortureHallsBoss (T2 map) uses Map Boss T1; BastionBoss (T3 map) uses Map Boss T2 | DATA | likely bug |
-| 11 | Map-mod stats map to monster stats with SetStat; `map_mon_att` 277 and `map_mon_tohit` 394 both target 119, so the later one wins | READ | unclear (277 has no source) |
-| 12 | `+area level` is written into the MonRegion (unused) and read separately through key 1; the region write is not idempotent if the builder runs twice for a level | READ | unclear |
-| 13 | Rarity scaling stores into a byte (wraps above 255); not reachable with current rolls | READ | unclear |
-| 14 | `data.zip`/`excel_live` Misc/Levels/CubeMain are stale versus the live MPQ (different map tiers) | DATA | tooling issue |
-
-
-
-**Unverified or open:**
 - The cube output ilvl for re-rolled maps, which decides 5 vs 6 rare affixes when below 85.
 - Pack-type probabilities in 0x6FCFF080.
 - XP effect of fortify.

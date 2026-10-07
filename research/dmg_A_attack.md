@@ -117,7 +117,7 @@ srvdofunc table (`0x104E3114` → `0x6FD274A8`) and srvstfunc table (`0x104E30E0
 | Attack (0 and class variants) | do1 `0x6FCC2C40` | 0 | fill directly, SrcDam 128; ranged weapon → missile path (`0x6FCC28F0`) |
 | Jab | do7 `0x6FC6CB00` (per sequence event) | calc1 | conversion calc4 if EType; skill elem |
 | Charged Strike | st6 `0x6FC6C720` (melee) + do11 (bolts) | **calc1 (= bolt count 3–12)** | skill elem (EMin–EMax ltng) in the melee hit |
-| Power Strike, Lightning Strike | st10 `0x6FC6C3A0` + do14 | **calc1** (PS **1000**, LS par1 16) | ltng EMin–EMax with mastery rolled straight into the ltng slot; do14 uses calc1 as the chain radius |
+| Power Strike, Lightning Strike | st10 `0x6FC6C3A0` + do14 | **calc1** | ltng EMin–EMax with mastery rolled straight into the ltng slot; do14 uses calc1 as the chain radius |
 | Guided Arrow, arrows, Multishot, Strafe | missiles (§8) | GA calc1; Multishot calc4 → missile s25; Strafe calc2 | Part C |
 | Zeal, Fend, Fury | st37 PD `0x10300A90` + do13 `0x6FC6DAC0` | **calc2** | hits = calc1; PD `0x10270150` adds +20 `inc_splash_radius` to the `temp_splash` state per hit |
 | Bash, Concentrate, Berserk | st32 `0x6FC473C0` | calc1 | conversion calc4 if EType (Concentrate: magic, `30+2·blvl`%); **calc2 (Bash `ln34`) added as flat points to the queued record after resist**; calc3 → attack-rate list (Berserk); aurastate applied after the hit |
@@ -178,7 +178,7 @@ Reached from D2Game `0x6FCB2A22`/`0x6FCB2C82` (stock `0x6FCB2360` replaced via P
 dex = s2
 kmin,kmax,kpct  ← D2Common #10323 0x6FDA1C60 (READ):
      kmin = kmax = s137 (item_kickdamage)
-     boots worn: kmin += Armor.mindam + s137 ; kmax += max(Armor.mindam, Armor.maxdam) + s137   (s137 counted twice)
+     boots worn: kmin += Armor.mindam + s137 ; kmax += max(Armor.mindam, Armor.maxdam) + s137
                  kpct += s17 + max(trunc(str·bootsStrBonus/100)+trunc(dex·bootsDexBonus/100)+s25, −90)
                  (weapon stat lists detached while reading, so the weapons' own 17/25 are not included)
 wmin/wmax = the wielded weapon's own stat-list 21/22 (only if it is a weapon, #10744 type 45 + #11006/#11160)
@@ -224,17 +224,14 @@ Elemental from the non-swinging weapon is excluded for that hit (§3).
   - no hit roll (always hits); SrcDam and HitFlags/ResultFlags/HitClass of the **current skill**;
   - damage % = PD `0x102720C0(current skill)` (§4 list) — skills not in the list lose their damage %;
   - the fill (weapon + item elemental), then resist (B) on the local record, **then** the current skill's own
-    elemental (`0x6FCBF210`) and physical (`0x6FCBF1A0`) are added — after resistance and after the total, so only
-    their poison/chill lengths take effect (VERIFIED, `exploit_checks.md` §2);
+    elemental (`0x6FCBF210`) and physical (`0x6FCBF1A0`) are added (VERIFIED);
   - life leech % (rec+0x38) ÷ ctx divisor 2 (min 1); the ctx %-scale (+0x38) is 0 for splash (no reduction);
-  - Dragon Talon/Tail/Flight (ids 255/270/275) instead copy the attacker's last queued kick record (already
-    resisted against the main target) and resist it again.
   - applied through PD `0x10271CF0 → 0x10271E00` (B).
 - There is **no splash damage fraction** in the code path: a splashed enemy takes the same roll formula as the
   main target (READ).
 
 ### Leap Attack and the Blade Creeper AI (same callback)
-- Leap Attack do153: ctx damage % = calc1, ToHit = skill ToHit (+ stat 119 in the roll: AR% counted twice, hit_pd2.md),
+- Leap Attack do153: ctx damage % = calc1, ToHit = skill ToHit (+ stat 119 in the roll, hit_pd2.md),
   radius from calc, leech divisor 3, no %-scale; plain Leap (132) skips the damage.
 
 ## 10. Character screen vs server (D2Client, READ/VERIFIED in charscreen.md, skilldmg.md)
@@ -275,45 +272,7 @@ Elemental from the non-swinging weapon is excluded for that hit (§3).
 Stock code on this path that PD2 does **not** change: 0x6FCFC530 except the mastery call, 0x6FCFBED0,
 0x6FCFCD80, the conversion block, 0x6FC572C0/0x6FC57540 (hand choice), st32/do9/do13 bodies, #10323.
 
-## 12. Quirks (verdicts; ids as in flow_A.json)
-
-1. **A.q.power_strike_1000** (VERIFIED, `harness/pstrike.c`; likely bug) — Power Strike calc1 = 1000 is read by
-   st10 as the melee hit's damage % (+1000% on the weapon roll, ×11 with no other %) and by do14 as the nova-target
-   search radius. The tooltip shows no %. Details: `exploit_checks.md` §1.
-2. **A.q.calc1_as_ed** (VERIFIED; intended but surprising) — Charged Strike (+3..12% = its bolt count) and Lightning Strike (+16% =
-   Param1, its chain radius) get their calc1 as a melee damage %. Stock-inherited.
-3. **A.q.bash_post_resist** (READ; intended but surprising) — Bash's calc2 (`ln34` = +lvl points) is added to the
-   queued record after resistances: not reduced by physical resist/DR, not multiplied by ED/crit.
-4. **A.q.area_skill_dmg_after_resist** (VERIFIED, `harness/splash.c`; likely bug; corrected) — in PD's area
-   callback (splash, Leap Attack, Blade Creeper) the skill's own elemental/physical is added after the resist step
-   **and after the total +0x4C is summed**. The execute clone takes only the total off life, so that damage is
-   **not dealt at all**; only its poison rate/length and chill length get through, ignoring resistance and immunity
-   (Rabies/Poison Dagger poison, Blades of Ice chill). Details: `exploit_checks.md` §2.
-5. **A.q.splash_ed_table** (VERIFIED table; intended but surprising) — splash keeps the current skill's damage %
-   only for the 21 listed skills; e.g. Vengeance, Power/Charged/Lightning Strike, Stun, Rabies and charge-up
-   finishers splash with 0%.
-6. **A.q.kick_splash_double_resist** (READ; likely bug) — splash from Dragon Talon/Tail/Flight reuses the main
-   target's already-resisted kick record and resists it again.
-7. **A.q.kick_formula** (VERIFIED; intended but surprising) — kicks ignore weapon base damage, Strength (except
-   boots StrBonus), masteries and s18; Dexterity adds dex/4 to min and dex/3 to max before the %.
-8. **A.q.kick_137_twice** (READ; likely bug, stock) — with boots, #10323 adds s137 `item_kickdamage` twice.
-9. **A.q.dragon_tail_no_ed** (READ; intended but surprising) — the Dragon Tail kick itself gets no skill %;
-   calc1 only scales the fire explosion.
-10. **A.q.missile_mastery_max** (READ; unclear) — missiles use stock #10804: the largest matching mastery entry,
-    no hand rules; melee uses PD's sum with hand rules.
-11. **A.q.max_never_reached** (VERIFIED; intended but surprising) — every weapon roll is `min + rand(max−min)`.
-12. **A.q.normaldamage_scope** (VERIFIED/READ; intended but surprising) — s111 from all items, before the %.
-13. **A.q.concentrate_magic** (DATA+READ; intended but surprising) — Concentrate converts `30+2·blvl`% of
-    physical damage to magic (after crit, before resist). PD2 Berserk no longer converts (EType blank).
-14. **A.q.zeal_splash_growth** (READ; intended but surprising) — Zeal/Fend/Fury add +20 inc_splash_radius per
-    hit (+1 splash radius per consecutive hit) while the sequence lasts; needs a splash source.
-15. **A.q.dual_mastery_primary** (READ; unclear) — masteries match the inventory "primary" weapon (#10061).
-16. **A.q.stun_missile** (DATA/READ; intended but surprising) — Stun has no do-function: its hit is the
-    `stunsplash` missile (radius 3, 25% weapon damage via SrcDam 32, plus MinDam).
-17. **A.q.maul_charge_lvl** (READ; intended) — Maul's state stats are evaluated with lvl = charge count.
-18. **A.q.charge_hit_no_ed** (READ; intended but surprising) — charge-up skills' charging hits carry no skill %.
-
-## 13. Discrepancies with our JS models
+## 12. Discrepancies with our JS models
 
 - `engine.js` mastery matching (type + type2, `passiveLayerMatches`) matches PD `0x102D30B0` (re-checked); no change.
 - `engine.js`/`combat.js` apply the melee mastery rules to bow/throw damage; the server uses stock #10804 there
@@ -322,7 +281,7 @@ Stock code on this path that PD2 does **not** change: 0x6FCFC530 except the mast
   Concentrate conversion, kick damage (now available as `damage.kickDamage`), splash.
 - Added `damage.kickDamage` (additive). `adv/engine/test_*.js` and `harness/damage_check.js` still pass.
 
-## 14. Open questions
+## 13. Open questions
 
 - Exact per-sequence event counts (hits per Jab/Frenzy/DS/Dragon Claw sequence) — see skill_speed.md.
 - Vengeance (PD do174) and Dragon Tail explosion arithmetic (float muldivs) — READ only.
